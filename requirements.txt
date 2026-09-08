@@ -1,0 +1,17 @@
+# Guilliman - dependencias de runtime
+#
+# Empaquetado de 32 bits: usa Python 3.12 (32-bit) y NO instala greenlet, porque
+# greenlet no publica wheel de 32 bits y la app es 100% sincrona. build.bat instala
+# SQLAlchemy con --no-deps. En 64 bits (dev) este requirements funciona igual.
+
+# Interfaz de escritorio (PyQt5 + qfluentwidgets)
+PyQt5==5.15.11
+pyqt-fluent-widgets==1.11.3
+PyQt5-Frameless-Window>=0.8.0
+
+# Backend (SQLAlchemy + SQLite) y validacion
+sqlalchemy==2.0.52
+pydantic==2.13.4
+
+# Generacion de reportes PDF
+reportlab>=4.0,<5.0

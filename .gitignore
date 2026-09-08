@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Build artifacts (PyInstaller)
+dist/
+build/
+*.spec
+
+# Local database
+*.db
+
+# Frontend local settings (theme preference, etc.)
+settings.json
+
+# Application log (errores en PCs de 32 bits objetivo)
+guilliman.log
+
+# IDE / OS
+.idea/
+.vscode/
+# OpenCode dir: ignore runtime/session artifacts but keep instruction docs tracked
+.opencode/*
+!.opencode/*.md
+Thumbs.db
+
+# Embedded 32-bit interpreter + compiled wheels (not committed)
+python312/

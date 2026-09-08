@@ -1,0 +1,23 @@
+{
+  "$schema": "https://opencode.ai/config.schema.json",
+  "instructions": [
+    "./AGENTS.md"
+  ],
+  "agent": {
+    "backend-dev": {
+      "mode": "primary",
+      "description": "Especialista en desarrollo y arquitectura de la capa db.",
+      "prompt": "Tu rol es la capa de Backend (paquete `db`). Aplica las directrices de ./.opencode/BACKEND.md y el contexto general del proyecto."
+    },
+    "frontend-dev": {
+      "mode": "primary",
+      "description": "Especialista en UI, componentes y cliente web.",
+      "prompt": "Tu rol es la capa de Frontend. Aplica las directrices de ./.opencode/FRONTEND.md y el contexto general del proyecto."
+    },
+    "lead-dev": {
+      "mode": "primary",
+      "description": "Director técnico, arquitecto de software y responsable de documentación global.",
+      "prompt": "Tu rol es el de Director Técnico y Arquitecto Full-Stack. Tienes visibilidad y responsabilidad total sobre todo el repositorio (db, frontend, configuraciones y documentación). Tus tareas principales son: 1) Responder preguntas de visión general o de integración entre capas; 2) Mantener y reescribir documentación técnica como README.md, AGENTS.md e instructions.md; 3) Diseñar arquitectura, flujos de datos end-to-end y auditar decisiones del proyecto."
+    }
+  }
+}

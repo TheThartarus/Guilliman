@@ -1,0 +1,157 @@
+"""Sección de audiencias del detalle de expediente (tabla, alta/edición/borrado)."""
+
+from __future__ import annotations
+
+import logging
+from datetime import datetime
+
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QBrush, QColor
+from PyQt5.QtWidgets import (
+    QHBoxLayout,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
+)
+
+from qfluentwidgets import PushButton, SubtitleLabel, TableWidget
+
+from db import CaseFileRead
+
+from ui.dialogs import HearingDialog, confirm_delete
+from ui.shared import (
+    HEARING_STATUS_LABELS,
+    HEARING_TYPE_LABELS,
+    format_datetime,
+    translate,
+)
+from ui.widgets import show_error, show_info
+
+logger = logging.getLogger("guilliman")
+
+
+def _split_hearings(hearings, now=None) -> list[tuple]:
+    """Separa audiencias en activas (arriba) y pasadas (abajo), en su orden.
+
+    Activas = fecha futura/hoy y estado Programada/Diferida, orden asc.
+    Pasadas = el resto, orden desc (más reciente primero). Devuelve una lista
+    de tuplas ``(hearing, is_past)`` en el orden de visualización.
+    """
+    now = now or datetime.now()
+    active = [
+        h for h in hearings
+        if h.scheduled_at >= now and h.status in ("Scheduled", "Deferred")
+    ]
+    past = [h for h in hearings if h not in active]
+    active.sort(key=lambda h: h.scheduled_at)
+    past.sort(key=lambda h: h.scheduled_at, reverse=True)
+    return [(h, False) for h in active] + [(h, True) for h in past]
+
+
+class _HearingsSection:
+    """Métodos de la sección de audiencias del ``CaseDetailView``."""
+
+    def _selected_hearing_id(self) -> int | None:
+        row = self.hearings_table.currentRow()
+        if 0 <= row < len(self._hearing_rows):
+            return self._hearing_rows[row]
+        return None
+
+    def _fill_hearings(self, case: CaseFileRead) -> None:
+        rows = _split_hearings(case.hearings)
+        self._hearing_rows = [h.id for h, _ in rows]
+        self.hearings_table.setRowCount(len(rows))
+        gray = QBrush(QColor(150, 150, 150))
+        for row, (h, is_past) in enumerate(rows):
+            id_item = QTableWidgetItem(str(h.id))
+            id_item.setTextAlignment(Qt.AlignCenter)
+            self.hearings_table.setItem(row, 0, id_item)
+            self.hearings_table.setItem(
+                row, 1, QTableWidgetItem(format_datetime(h.scheduled_at))
+            )
+            self.hearings_table.setItem(
+                row, 2, QTableWidgetItem(translate(h.hearing_type, HEARING_TYPE_LABELS))
+            )
+            self.hearings_table.setItem(
+                row, 3, QTableWidgetItem(translate(h.status, HEARING_STATUS_LABELS))
+            )
+            self.hearings_table.setItem(row, 4, QTableWidgetItem(h.notes or ""))
+            if is_past:
+                for col in range(5):
+                    self.hearings_table.item(row, col).setForeground(gray)
+
+    def _on_add_hearing(self) -> None:
+        dialog = HearingDialog(self, self.app, self.case_file_id)
+        if dialog.exec():
+            self.load()
+
+    def _on_edit_hearing(self) -> None:
+        hearing_id = self._selected_hearing_id()
+        if hearing_id is None:
+            show_error(self, "Seleccione una audiencia de la tabla.")
+            return
+        hearing = next(
+            (h for h in self._case.hearings if h.id == hearing_id), None
+        )
+        dialog = HearingDialog(self, self.app, self.case_file_id, hearing)
+        if dialog.exec():
+            self.load()
+
+    def _on_hearing_double(self, row: int, _col: int) -> None:
+        if 0 <= row < len(self._hearing_rows):
+            hearing = next(
+                (h for h in self._case.hearings if h.id == self._hearing_rows[row]), None
+            )
+            dialog = HearingDialog(self, self.app, self.case_file_id, hearing)
+            if dialog.exec():
+                self.load()
+
+    def _build_hearings_section(self) -> QWidget:
+        container = QWidget()
+        vbox = QVBoxLayout(container)
+        vbox.setContentsMargins(0, 0, 0, 0)
+        vbox.addWidget(SubtitleLabel("Audiencias"))
+
+        row = QHBoxLayout()
+        self.add_hearing_btn = PushButton("Agregar audiencia")
+        self.add_hearing_btn.clicked.connect(self._on_add_hearing)
+        self.edit_hearing_btn = PushButton("Editar audiencia")
+        self.edit_hearing_btn.clicked.connect(self._on_edit_hearing)
+        self.del_hearing_btn = PushButton("Eliminar audiencia")
+        self.del_hearing_btn.clicked.connect(self._on_del_hearing)
+        row.addWidget(self.add_hearing_btn)
+        row.addWidget(self.edit_hearing_btn)
+        row.addWidget(self.del_hearing_btn)
+        vbox.addLayout(row)
+
+        from PyQt5.QtWidgets import QAbstractItemView, QHeaderView
+
+        self.hearings_table = TableWidget()
+        self.hearings_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.hearings_table.setColumnCount(5)
+        self.hearings_table.setHorizontalHeaderLabels(
+            ["ID", "Fecha/Hora", "Tipo", "Estado", "Notas"]
+        )
+        self.hearings_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.hearings_table.cellDoubleClicked.connect(self._on_hearing_double)
+        vbox.addWidget(self.hearings_table, 1)
+        return container
+
+    def _on_del_hearing(self) -> None:
+        hearing_id = self._selected_hearing_id()
+        if hearing_id is None:
+            show_error(self, "Seleccione una audiencia de la tabla.")
+            return
+        if not confirm_delete(self, "¿Eliminar esta audiencia?"):
+            return
+        try:
+            ok = self.app.service.delete_hearing(hearing_id)
+        except ValueError as exc:
+            logger.exception("Error al eliminar audiencia %s", hearing_id)
+            show_error(self, f"Error al eliminar: {exc}")
+            return
+        if ok:
+            show_info(self, "Audiencia eliminada.")
+            self.load()
+        else:
+            show_error(self, "La audiencia no existe.")
