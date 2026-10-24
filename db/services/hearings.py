@@ -28,7 +28,7 @@ class HearingMethods(_ServiceMixin):
         audio_dir.mkdir(parents=True, exist_ok=True)
         return audio_dir
 
-    def _copy_audio_to_store(self, src_path: str) -> tuple[str, str]:
+    def store_audio_file(self, src_path: str) -> tuple[str, str]:
         """Copia un archivo de audio al almacén local con nombre único.
 
         Args:
@@ -52,6 +52,10 @@ class HearingMethods(_ServiceMixin):
         shutil.copy2(src, dest)
         rel_path = dest.relative_to(get_app_data_dir()).as_posix()
         return rel_path, src.name
+
+    def get_audio_abs_path(self, rel_path: str) -> str:
+        """Retorna la ruta absoluta de un audio del store (para reproducción)."""
+        return str((get_app_data_dir() / rel_path).resolve())
 
     def list_scheduled_hearings(
         self,
@@ -131,7 +135,11 @@ class HearingMethods(_ServiceMixin):
             hearing = session.get(HearingSchedule, hearing_id)
             if hearing is None:
                 return False
+            old_audio = hearing.audio_path
             self._apply_hearing_update(hearing, update)
+            # Si el audio cambió (o pasó a None), el archivo viejo queda huérfano.
+            if old_audio and old_audio != hearing.audio_path:
+                self._delete_stored_audio(old_audio)
             session.add(hearing)
             return True
 
@@ -170,5 +178,6 @@ class HearingMethods(_ServiceMixin):
             hearing = session.get(HearingSchedule, hearing_id)
             if hearing is None:
                 return False
+            self._delete_stored_audio(hearing.audio_path)
             session.delete(hearing)
             return True

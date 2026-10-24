@@ -13,6 +13,9 @@ build/
 # Local database
 *.db
 
+# Audio store (copias locales de audios de audiencias)
+audios/
+
 # Frontend local settings (theme preference, etc.)
 settings.json
 
