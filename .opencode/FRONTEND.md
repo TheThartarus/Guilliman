@@ -10,13 +10,15 @@ Desktop UI: PyQt5 + qfluentwidgets (FluentWindow). Windows-only, 32-bit target.
 
 ## Structure (`ui/`)
 - `app_shell.py` — `AppShell(FluentWindow)` + `GuillimanApp` (shared state: `service` + `shell`)
-  + `SettingsView` (theme combo + backup/restore buttons).
+  + `SettingsView` (theme combo + "Respaldar datos (BD + audios)" / "Restaurar datos",
+  both operating on a `.zip` via `service.backup_data()` / `service.restore_data()`).
 - `case_search_view.py` — search / list of case files.
 - `case_form_view.py` — create / edit form for a case file and its child entities.
 - `case_detail_view/` — read-only detail of a case file (package, not single file).
   Split into mixins per entity: `_defendants.py`, `_victims.py`, `_witnesses.py`,
   `_documentaries.py`, `_experts.py`, `_hearings.py`. All combined in
-  `CaseDetailView` via multiple inheritance.
+  `CaseDetailView` via multiple inheritance. `_hearings.py` shows an "Audio" column and
+  offers "Abrir audio" in the table context menu (resolves via `service.get_audio_abs_path`).
 - `agenda_view.py` — calendar / agenda of scheduled hearings.
 - `settings.py` — theme persistence (light / dark) to `settings.json`.
 - `dialogs/` — entity dialogs, split into private modules:
@@ -24,6 +26,8 @@ Desktop UI: PyQt5 + qfluentwidgets (FluentWindow). Windows-only, 32-bit target.
   `_record.py` (`DocumentaryDialog`, `ExpertDialog`), `_hearing.py` (`HearingDialog`),
   `_cards.py` (`_DateCard`, `_DateTimeCard`, `_FlaggedDateCard`), `_misc.py` (`confirm_delete`, `pick_save_pdf`),
   `_sizes.py` (dialog dimension constants). All re-exported from `dialogs/__init__.py`.
+  `HearingDialog` also attaches audio: it copies the file (via `service.store_audio_file`)
+  only on save, so cancelling leaves no orphan, and can open/clear an existing audio.
 - `exporters.py` — PDF generation (reportlab), pure (no PyQt dependency).
 - `shared.py` — pure helpers (labels, date format/parse, validators, uppercase + input
   restriction, InfoBar wrappers). Safe to import without PyQt present.
@@ -40,6 +44,8 @@ Desktop UI: PyQt5 + qfluentwidgets (FluentWindow). Windows-only, 32-bit target.
 ## State & data flow
 - UI talks to the db only through `CaseFileService` (passed via `GuillimanApp.service`).
   No direct SQLAlchemy usage in `ui/`.
+- Hearing audio paths are stored relative to the data dir; the UI must resolve them with
+  `service.get_audio_abs_path(rel)` and never build `<data_dir>` paths itself.
 - `ui.settings` persists prefs (`theme_mode`) to `get_settings_path()`:
   `Guilliman_DATA_DIR` → frozen (`%LOCALAPPDATA%/Guilliman/settings.json`) → **dev: repo root
   `settings.json`** (gitignored). In dev, running the app writes `settings.json` to the repo root.
@@ -93,3 +99,5 @@ Desktop UI: PyQt5 + qfluentwidgets (FluentWindow). Windows-only, 32-bit target.
   paths never resolve under PyInstaller's `_MEIPASS`.
 - Test teardown MUST call `service.close()` or `dispose_engine()` to release the SQLite
   file handle on Windows. `reset_session_factory()` clears all cached engines/factories.
+- `test_hearing_audio.py` covers the audio lifecycle (store → persist → clear/delete →
+  default `backup_data()`); it isolates `audios/` via `Guilliman_DATA_DIR`.

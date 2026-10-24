@@ -3,8 +3,9 @@
 Compact guidance for agents working in this repo. Signals only.
 
 ## What this is
-- Windows-only desktop app (PyQt5 + qfluentwidgets) for managing penal case files.
-  Backend is pure Python over SQLAlchemy 2.0 + SQLite (local `case_files.db`).
+- Windows-only desktop app (PyQt5 + qfluentwidgets) for managing penal case files,
+  including per-hearing audio recordings stored locally. Backend is pure Python over
+  SQLAlchemy 2.0 + SQLite (local `case_files.db`).
 - Build target is **32-bit Windows PCs**; the packaged exe must run offline with no Python install.
 
 ## Commands
@@ -36,6 +37,11 @@ Compact guidance for agents working in this repo. Signals only.
   `Guilliman_DATA_DIR` env → frozen exe (`%LOCALAPPDATA%/Guilliman` on Win, `~/.guilliman` elsewhere)
   → dev (repo root). Tests override via `Guilliman_DATA_DIR` or an explicit DB path to
   `CaseFileService(...)`. Never point data at `_MEIPASS` (temp dir of the frozen exe).
+- **Hearing audio**: each `HearingSchedule` carries `audio_path` (relative to
+  `get_app_data_dir()`) + `audio_filename`. Files live in `<data_dir>/audios/`
+  (gitignored; in dev that is the repo root). Public API: `store_audio_file(src) ->
+  (rel_path, filename)` and `get_audio_abs_path(rel)`. Cleanup is automatic when the
+  audio is replaced/cleared, a hearing is deleted, or its parent case file is deleted.
 
 ## Quirks / gotchas
 - `.opencode/node_modules` and `.opencode/package.json` are **OpenCode's own plugin
@@ -52,6 +58,11 @@ Compact guidance for agents working in this repo. Signals only.
 - **Migrations** are sequential integer versions in `db/migrations.py`, applied by
   `init_db()` only for versions newer than the recorded `schema_version`. Never edit a
   released migration; append a new entry to `MIGRATIONS` instead.
+- **Backups**: the user-facing "Respaldar datos" flow uses `backup_data()` /
+  `restore_data()`, which zip the `.db` **and** `audios/` together. `backup_db()` /
+  `restore_db()` remain DB-only (legacy). `restore_data()` validates the zip (rejects
+  zip-slip) and replaces both the DB and the whole `audios/` folder; Settings calls
+  `backup_data()` first as a safety net before restoring.
 - Input convention: text fields are uppercased on collection
   (`ui/shared.make_uppercase`, `combo_set_data`). Tests assert uppercase output
   (e.g. `form._collect_kwargs()` returns `"FISCALIA TEST"`); preserve this behavior.

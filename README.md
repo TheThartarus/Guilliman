@@ -19,8 +19,12 @@ Aplicación de escritorio nativa para Windows diseñada para la gestión integra
   - **Peritos** — Nombre, comparecencia y fecha.
   - **Pruebas documentales** — Nombre, estado (en posesión / evacuada) con fechas.
 - **Agenda de audiencias** — Calendario con tipo, estado y notas por audiencia.
+- **Audios de audiencias** — Adjunta la grabación de cada audiencia; el archivo se copia
+  al equipo local para no depender del teléfono. Permite abrir/reproducir el audio desde
+  el detalle del expediente.
 - **Búsqueda de expedientes** — Por número, fiscalía u otros criterios.
 - **Exportación a PDF** — Del expediente individual y de la agenda completa (reportlab).
+- **Respaldo completo** — Un solo `.zip` con la base de datos y todos los audios (Ajustes).
 - **Tema claro / oscuro** — Persistente entre sesiones (sección Ajustes).
 - **Normalización automática** — Campos de entrada en MAYÚSCULAS.
 
@@ -104,13 +108,34 @@ Copia la carpeta `dist\Guilliman` a la PC destino y ejecuta `Guilliman.exe`.
 
 ## Datos y configuración
 
-La base de datos (`case_files.db`) y la configuración (`settings.json`) se resuelven con esta precedencia:
+La base de datos (`case_files.db`), la configuración (`settings.json`) y los audios de
+audiencias se resuelven con esta precedencia:
 
 | Prioridad | Fuente | Descripción |
 |-----------|--------|-------------|
 | 1 | `Guilliman_DATA_DIR` | Variable de entorno (ruta explícita; útil para pruebas o despliegues portátiles) |
 | 2 | Modo congelado (exe) | `%LOCALAPPDATA%\Guilliman` en Windows (`~/.guilliman` en otros SO) |
-| 3 | Modo desarrollo | Raíz del proyecto (ambos archivos en `.gitignore`) |
+| 3 | Modo desarrollo | Raíz del proyecto (`case_files.db`, `settings.json` y `audios/` en `.gitignore`) |
+
+Estructura del directorio de datos:
+
+```
+<data_dir>/
+├── case_files.db       # base de datos SQLite
+├── settings.json       # preferencias (tema)
+├── audios/             # copias locales de los audios de audiencias (.gitignore)
+└── backups/            # respaldos generados automáticamente
+```
+
+Los audios se guardan con un nombre único y la base de datos solo almacena su ruta
+relativa. Al reemplazar o quitar un audio, borrar una audiencia o eliminar el expediente,
+el archivo correspondiente se elimina del store.
+
+### Respaldo
+
+En **Ajustes → Respaldar datos (BD + audios)** se genera un único archivo `.zip` con la
+base de datos y toda la carpeta `audios/`. **Restaurar datos** reemplaza ambos; antes de
+restaurar, la app crea automáticamente un respaldo de seguridad.
 
 ---
 
@@ -122,6 +147,7 @@ La base de datos (`case_files.db`) y la configuración (`settings.json`) se resu
 | La ventana no aparece tras el build | Ejecuta `dist\Guilliman\Guilliman.exe` desde una consola para ver errores. Verifica que se copió toda la carpeta. |
 | `py` no encuentra 3.12-32 | Instala Python 3.12 (x86/32-bit) desde python.org con el "py launcher" habilitado. |
 | Error "No se pudo inicializar la base de datos" | Revisa permisos de escritura en la carpeta de datos (ver tabla anterior). |
+| "El archivo de audio no se encuentra en este equipo" | Se restauró un `.db` sin su carpeta `audios/`, o el archivo se movió/borró manualmente. Restaura un respaldo completo (`.zip`) o vuelve a adjuntar el audio. |
 | Texto en minúsculas inesperado | El proyecto normaliza los campos a MAYÚSCULAS en la capa UI (`ui/shared`). No es un bug. |
 
 ---

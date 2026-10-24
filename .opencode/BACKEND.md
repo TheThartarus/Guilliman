@@ -59,7 +59,8 @@ Persistence + business logic. Pure Python (SQLAlchemy 2.0 + SQLite, pydantic). N
   - `Documentary`: `name`, `in_possession` (bool), `possession_date`, `evacuated` (bool),
     `evacuation_date`, `additional_notes`.
   - `Expert`: `name`, `appeared` (bool), `appearance_date`, `additional_notes`.
-  - `HearingSchedule`: `scheduled_at` (datetime), `hearing_type`, `status`, `notes`.
+  - `HearingSchedule`: `scheduled_at` (datetime), `hearing_type`, `status`, `notes`,
+    `audio_path` (relative to `get_app_data_dir()`), `audio_filename` (original name).
 
 ## Schemas (`schemas.py`)
 - `*Create` = input validation.
@@ -73,6 +74,8 @@ Persistence + business logic. Pure Python (SQLAlchemy 2.0 + SQLite, pydantic). N
   `experts`, `hearings` lists (eager `selectin`). No extra calls needed to read them.
 - `ScheduledHearingItem` is a flat DTO for calendar/agenda views: `hearing_id`,
   `case_file_id`, `case_number`, `scheduled_at`, `hearing_type`, `status`, `notes`.
+- `HearingScheduleCreate` / `HearingScheduleUpdate` / `HearingScheduleRead` carry
+  `audio_path` + `audio_filename` (optional). The agenda item does not.
 - `DefendantStatusValue` is a `Literal` of the *current* Spanish domain
   (`"En Libertad" | "Detenido" | "Arresto Domiciliario"`). Old English values
   (`"Detained"`, `"Custody"`, `"Conditional release"`) are legacy data, not valid input.
@@ -90,9 +93,17 @@ Persistence + business logic. Pure Python (SQLAlchemy 2.0 + SQLite, pydantic). N
 - Children — each exposes `add_* -> int`, `update_* -> bool`, `delete_* -> bool`:
   defendants, victims, witnesses, documentaries, experts, hearings. Hearings also expose
   `update_hearing_status(...)`.
-- Backup: `backup_db(dest_path=None) -> str` (returns backup path), `restore_db(src_path)`.
-  `backup_db` disposes the engine first (forces WAL checkpoint), copies the `.db` file,
-  then reinitializes. `restore_db` does the same but replaces from a source file.
+- Hearing audio: `store_audio_file(src_path) -> (rel_path, filename)` copies the file
+  into `<data_dir>/audios/` with a unique name and returns the DB-relative path;
+  `get_audio_abs_path(rel_path) -> str` resolves it for playback. Passing
+  `audio_path`/`audio_filename` through `add_hearing` / `update_hearing` persists or
+  clears them. Stored files are deleted when the audio is replaced/cleared, the hearing
+  is deleted, or the case file is deleted (cascade). Never uppercase these values.
+- Backup: `backup_data(dest_zip_path=None) -> str` zips the `.db` **and** `audios/`
+  (default dest: `<data_dir>/backups/guilliman_backup_<timestamp>.zip`);
+  `restore_data(src_zip_path)` validates the zip (rejects zip-slip) and replaces both.
+  `backup_db(dest_path=None)` / `restore_db(src_path)` are DB-only legacy helpers.
+  All of them dispose the engine first (WAL checkpoint / Windows handle) and reinit after.
 - Error / return semantics (relevant for the UI):
   - `add_*` / `update_*` raise `CaseFileNotFoundError` (subclass of `ValueError`) if the
     parent case file does not exist.
@@ -108,6 +119,8 @@ Persistence + business logic. Pure Python (SQLAlchemy 2.0 + SQLite, pydantic). N
   - `db_path` property (from `self._db_path`)
   - `_to_case_file_read()` ORM→DTO converter
   - `_apply_case_file_update()` and `_apply_hearing_update()` PATCH applicators
+  - `_delete_stored_audio(rel_path)` — deletes a file only if it lives inside
+    `<data_dir>/audios/` (guards against path traversal); missing files are ignored
 - To add a new entity: create mixin in `db/services/`, add schema in
   `db/schemas.py`, and mix it into `CaseFileService` in `service.py`.
 
