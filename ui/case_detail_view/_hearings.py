@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import logging
+import os
 from datetime import datetime
 
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QBrush, QColor
+from PyQt5.QtCore import Qt, QUrl
+from PyQt5.QtGui import QBrush, QColor, QDesktopServices
 from PyQt5.QtWidgets import (
     QHBoxLayout,
+    QMenu,
     QTableWidgetItem,
     QVBoxLayout,
     QWidget,
@@ -76,8 +78,9 @@ class _HearingsSection:
                 row, 3, QTableWidgetItem(translate(h.status, HEARING_STATUS_LABELS))
             )
             self.hearings_table.setItem(row, 4, QTableWidgetItem(h.notes or ""))
-            audio = f"🎵 {h.audio_filename}" if h.audio_filename else ""
-            self.hearings_table.setItem(row, 5, QTableWidgetItem(audio))
+            self.hearings_table.setItem(
+                row, 5, QTableWidgetItem(h.audio_filename or "")
+            )
             if is_past:
                 for col in range(6):
                     self.hearings_table.item(row, col).setForeground(gray)
@@ -98,6 +101,29 @@ class _HearingsSection:
         dialog = HearingDialog(self, self.app, self.case_file_id, hearing)
         if dialog.exec():
             self.load()
+
+    def _on_hearing_context_menu(self, pos) -> None:
+        """Menú contextual: abrir el audio asociado a la audiencia."""
+        row = self.hearings_table.rowAt(pos.y())
+        if not (0 <= row < len(self._hearing_rows)):
+            return
+        hearing = next(
+            (h for h in self._case.hearings if h.id == self._hearing_rows[row]), None
+        )
+        if hearing is None or not hearing.audio_path:
+            return
+        menu = QMenu(self.hearings_table)
+        menu.addAction(
+            "Abrir audio", lambda: self._open_hearing_audio(hearing.audio_path)
+        )
+        menu.exec_(self.hearings_table.viewport().mapToGlobal(pos))
+
+    def _open_hearing_audio(self, rel_path: str) -> None:
+        abs_path = self.app.service.get_audio_abs_path(rel_path)
+        if not os.path.isfile(abs_path):
+            show_error(self, "El archivo de audio no se encuentra en este equipo.")
+            return
+        QDesktopServices.openUrl(QUrl.fromLocalFile(abs_path))
 
     def _on_hearing_double(self, row: int, _col: int) -> None:
         if 0 <= row < len(self._hearing_rows):
@@ -136,6 +162,10 @@ class _HearingsSection:
         )
         self.hearings_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.hearings_table.cellDoubleClicked.connect(self._on_hearing_double)
+        self.hearings_table.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.hearings_table.customContextMenuRequested.connect(
+            self._on_hearing_context_menu
+        )
         vbox.addWidget(self.hearings_table, 1)
         return container
 

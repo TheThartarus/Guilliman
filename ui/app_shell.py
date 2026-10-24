@@ -75,9 +75,9 @@ class SettingsView(QWidget):
         # Respaldo y restauración de la base de datos (integra B3).
         layout.addWidget(SubtitleLabel("Respaldo de datos"))
         backup_row = QHBoxLayout()
-        self.backup_btn = PushButton("Respaldar BD")
+        self.backup_btn = PushButton("Respaldar datos (BD + audios)")
         self.backup_btn.clicked.connect(self._on_backup)
-        self.restore_btn = PushButton("Restaurar BD")
+        self.restore_btn = PushButton("Restaurar datos")
         self.restore_btn.clicked.connect(self._on_restore)
         backup_row.addWidget(self.backup_btn)
         backup_row.addWidget(self.restore_btn)
@@ -102,13 +102,15 @@ class SettingsView(QWidget):
         from PyQt5.QtWidgets import QFileDialog
 
         dest, _ = QFileDialog.getSaveFileName(
-            self, "Respaldar base de datos", "case_files_backup.db",
-            "Bases de datos (*.db)",
+            self, "Respaldar datos (BD + audios)", "guilliman_backup.zip",
+            "Respaldo (*.zip)",
         )
         if not dest:
             return
+        if not dest.lower().endswith(".zip"):
+            dest += ".zip"
         try:
-            path = self.app.service.backup_db(dest)
+            path = self.app.service.backup_data(dest)
         except Exception as exc:  # noqa: BLE001 - fallo de I/O
             show_error(self, f"No se pudo crear el respaldo:\n{exc}")
             return
@@ -118,21 +120,21 @@ class SettingsView(QWidget):
         from PyQt5.QtWidgets import QFileDialog, QMessageBox
 
         src, _ = QFileDialog.getOpenFileName(
-            self, "Restaurar base de datos", "", "Bases de datos (*.db)"
+            self, "Restaurar datos", "", "Respaldo (*.zip)"
         )
         if not src:
             return
         reply = QMessageBox.question(
             self, "Restaurar",
-            "¿Restaurar la base de datos desde el respaldo?\n"
-            "Se reemplazará la base actual. Se hará un respaldo automático previo.",
+            "¿Restaurar la base de datos y los audios desde el respaldo?\n"
+            "Se reemplazará la información actual. Se hará un respaldo automático previo.",
             QMessageBox.Yes | QMessageBox.No,
         )
         if reply != QMessageBox.Yes:
             return
         try:
-            self.app.service.backup_db()  # respaldo automático de la actual
-            self.app.service.restore_db(src)
+            self.app.service.backup_db()  # respaldo automático previo de la BD
+            self.app.service.restore_data(src)
         except Exception as exc:  # noqa: BLE001 - fallo de I/O
             show_error(self, f"No se pudo restaurar:\n{exc}")
             return
@@ -141,7 +143,7 @@ class SettingsView(QWidget):
             self.app.shell._close_all_dynamic_routes()
             self.app.shell.search_view.refresh()
             self.app.shell.agenda_view.refresh()
-        show_info(self, "Base de datos restaurada.")
+        show_info(self, "Datos restaurados.")
 
 
 class AppShell(FluentWindow):

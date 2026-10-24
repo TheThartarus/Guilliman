@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import logging
+import os
 from datetime import datetime
 
+from PyQt5.QtCore import QUrl
+from PyQt5.QtGui import QDesktopServices
 from PyQt5.QtWidgets import (
     QDialog,
     QFileDialog,
@@ -45,7 +48,10 @@ from ._sizes import HEARING_DIALOG_HEIGHT, HEARING_DIALOG_WIDTH
 
 logger = logging.getLogger("guilliman")
 
-AUDIO_FILTER = "Audio (*.mp3 *.wav *.m4a *.ogg *.aac)"
+AUDIO_FILTER = (
+    "Audio (*.mp3 *.wav *.m4a *.ogg *.opus *.aac *.flac *.wma *.amr *.3gp)"
+    ";;Todos los archivos (*.*)"
+)
 
 
 class HearingDialog(QDialog):
@@ -78,11 +84,15 @@ class HearingDialog(QDialog):
         make_uppercase(self._notes)
         self._fields["notes"] = self._notes
 
-        # Audio adjunto: se copia a la tienda del backend al seleccionarlo.
+        # Audio adjunto: la copia al store se aplaza hasta guardar, para no
+        # dejar huérfanos si el usuario cancela.
         self._audio_path: str | None = None
         self._audio_filename: str | None = None
+        self._pending_audio_src: str | None = None
         self._audio_btn = PushButton("Seleccionar audio…")
         self._audio_btn.clicked.connect(self._on_pick_audio)
+        self._open_audio_btn = PushButton("Abrir audio")
+        self._open_audio_btn.clicked.connect(self._on_open_audio)
         self._clear_audio_btn = PushButton("Quitar audio")
         self._clear_audio_btn.clicked.connect(self._clear_audio)
         self._audio_label = BodyLabel("Sin audio")
@@ -117,6 +127,7 @@ class HearingDialog(QDialog):
         form.addRow(BodyLabel("Notas"), self._notes)
         audio_row = QHBoxLayout()
         audio_row.addWidget(self._audio_btn)
+        audio_row.addWidget(self._open_audio_btn)
         audio_row.addWidget(self._clear_audio_btn)
         audio_row.addWidget(self._audio_label, 1)
         form.addRow(BodyLabel("Audio"), audio_row)
@@ -135,11 +146,24 @@ class HearingDialog(QDialog):
         buttons.addWidget(self.cancel_btn)
         layout.addLayout(buttons)
 
-    def _set_audio(self, path: str | None, filename: str | None) -> None:
+    def _set_audio(
+        self,
+        path: str | None,
+        filename: str | None,
+        pending_src: str | None = None,
+    ) -> None:
+        """Actualiza el estado del audio mostrado.
+
+        ``pending_src`` es el archivo de origen elegido por el usuario que aún
+        no se ha copiado al store (se copia al guardar).
+        """
         self._audio_path = path
         self._audio_filename = filename
+        self._pending_audio_src = pending_src
         self._audio_label.setText(filename or "Sin audio")
-        self._clear_audio_btn.setEnabled(bool(path))
+        self._clear_audio_btn.setEnabled(bool(path or filename))
+        # Abrir solo es posible para audio ya guardado en el store.
+        self._open_audio_btn.setEnabled(bool(path))
 
     def _on_pick_audio(self) -> None:
         path, _ = QFileDialog.getOpenFileName(
@@ -147,14 +171,16 @@ class HearingDialog(QDialog):
         )
         if not path:
             return
-        try:
-            # ponytail: método privado del backend; usar el público cuando exista.
-            rel_path, filename = self.app.service._copy_audio_to_store(path)
-        except OSError as exc:
-            logger.exception("Error al adjuntar audio a la audiencia")
-            show_error(self, f"No se pudo adjuntar el audio: {exc}")
+        self._set_audio(None, os.path.basename(path), pending_src=path)
+
+    def _on_open_audio(self) -> None:
+        if not self._audio_path:
             return
-        self._set_audio(rel_path, filename)
+        abs_path = self.app.service.get_audio_abs_path(self._audio_path)
+        if not os.path.isfile(abs_path):
+            show_error(self, "El archivo de audio no se encuentra en este equipo.")
+            return
+        QDesktopServices.openUrl(QUrl.fromLocalFile(abs_path))
 
     def _clear_audio(self) -> None:
         self._set_audio(None, None)
@@ -189,6 +215,18 @@ class HearingDialog(QDialog):
             if not unchanged:
                 show_error(self, "No se puede programar una audiencia en una fecha pasada.")
                 return
+        if self._pending_audio_src:
+            try:
+                self._audio_path, self._audio_filename = (
+                    self.app.service.store_audio_file(self._pending_audio_src)
+                )
+            except OSError as exc:
+                logger.exception("Error al adjuntar audio a la audiencia")
+                show_error(self, f"No se pudo adjuntar el audio: {exc}")
+                return
+            self._pending_audio_src = None
+            kwargs["audio_path"] = self._audio_path
+            kwargs["audio_filename"] = self._audio_filename
         try:
             payload = HearingScheduleCreate(**kwargs)
         except ValidationError as exc:
