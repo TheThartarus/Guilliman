@@ -133,7 +133,7 @@ class SettingsView(QWidget):
         if reply != QMessageBox.Yes:
             return
         try:
-            self.app.service.backup_db()  # respaldo automático previo de la BD
+            self.app.service.backup_data()  # respaldo automático previo (BD + audios)
             self.app.service.restore_data(src)
         except Exception as exc:  # noqa: BLE001 - fallo de I/O
             show_error(self, f"No se pudo restaurar:\n{exc}")
