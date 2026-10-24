@@ -82,17 +82,25 @@ class BackupMethods(_ServiceMixin):
         shutil.copy2(src, dest)
         self.init_db()
 
-    def backup_data(self, dest_zip_path: str) -> str:
+    def backup_data(self, dest_zip_path: str | None = None) -> str:
         """Respaldo completo: la base ``.db`` y la carpeta ``audios/`` en un .zip.
 
         Args:
             dest_zip_path: Ruta del .zip a crear (su carpeta se crea si falta).
+                Si es ``None``, se genera
+                ``<data_dir>/backups/guilliman_backup_<timestamp>.zip``.
 
         Returns:
             Ruta absoluta del .zip creado.
         """
-        dest = Path(dest_zip_path).resolve()
-        dest.parent.mkdir(parents=True, exist_ok=True)
+        if dest_zip_path is None:
+            backups_dir = get_app_data_dir() / "backups"
+            backups_dir.mkdir(parents=True, exist_ok=True)
+            stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            dest = backups_dir / f"guilliman_backup_{stamp}.zip"
+        else:
+            dest = Path(dest_zip_path).resolve()
+            dest.parent.mkdir(parents=True, exist_ok=True)
         src_db = self._resolve_db_file()
         audio_dir = get_app_data_dir() / _ARCHIVE_AUDIO_DIR
         # Disponer el engine vacía el WAL y libera el handle del .db (Windows).

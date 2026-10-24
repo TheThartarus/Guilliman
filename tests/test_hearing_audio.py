@@ -86,6 +86,10 @@ def _exercise_lifecycle(service: CaseFileService, data_dir: Path, work_dir: Path
     assert service.delete_hearing(hearing_id)
     assert not stored2.exists(), "delete_hearing debe borrar el archivo del store"
 
+    # backup_data() sin argumentos usa <data_dir>/backups/ y devuelve ruta existente.
+    backup_path = service.backup_data()
+    assert Path(backup_path).is_file() and backup_path.endswith(".zip")
+
 
 def test_hearing_audio_lifecycle(tmp_path, monkeypatch) -> None:
     data_dir = tmp_path / "data"
