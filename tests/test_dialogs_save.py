@@ -125,7 +125,7 @@ def test_hearing_dialog_save_calls_show_info():
         _cleanup(db)
 
 
-def test_hearing_dialog_rejects_past_date_on_create():
+def test_hearing_dialog_allows_past_date_on_create():
     svc, db = _make_service()
     try:
         case_id = svc.create_case_file(
@@ -145,12 +145,12 @@ def test_hearing_dialog_rejects_past_date_on_create():
                 mock.patch.object(_hearing, "show_error") as m_err:
             dlg._on_save()
 
-        assert m_err.called, "show_error debió llamarse con fecha pasada"
-        assert not m_info.called, "show_info no debió llamarse con fecha pasada"
+        assert m_info.called, "show_info debió llamarse con fecha pasada"
+        assert not m_err.called, "show_error no debió llamarse con fecha pasada"
         items = svc.list_scheduled_hearings(
             datetime(1999, 1, 1), datetime(2100, 12, 31, 23, 59)
         )
-        assert not any(i.case_number == "MP-PAST" for i in items)
+        assert any(i.case_number == "MP-PAST" for i in items)
     finally:
         _cleanup(db)
 
@@ -166,23 +166,14 @@ def test_hearing_dialog_allows_unchanged_past_date_on_edit():
                 origin_type="Local",
             )
         )
-        # Insertamos la audiencia directamente en la BD (bypass de la
-        # validación de add_hearing) porque el test valida el comportamiento
-        # de EDICIÓN de una fecha pasada existente, no la creación.
-        from db.database import session_scope
-        from db.models import HearingSchedule
-
-        with session_scope(svc._db_path) as session:
-            hearing = HearingSchedule(
-                case_file_id=case_id,
+        # add_hearing ya permite registrar audiencias en fechas pasadas.
+        svc.add_hearing(
+            case_id,
+            HearingScheduleCreate(
                 scheduled_at=datetime(2000, 1, 1, 10, 0),
                 hearing_type="Apertura de Juicio",
                 status="Scheduled",
-            )
-            session.add(hearing)
-
-        items = svc.list_scheduled_hearings(
-            datetime(1999, 1, 1), datetime(2100, 12, 31, 23, 59)
+            ),
         )
         hearing_dto = svc.get_case_file_by_id(case_id).hearings[0]
         dlg = HearingDialog(None, _fake_app(svc), case_id, hearing=hearing_dto)
@@ -194,8 +185,8 @@ def test_hearing_dialog_allows_unchanged_past_date_on_edit():
                 mock.patch.object(_hearing, "show_error") as m_err:
             dlg._on_save()
 
-        assert m_info.called, "editar sin cambiar fecha pasada debió permitirse"
-        assert not m_err.called, "no debió dar error al no cambiar la fecha"
+        assert m_info.called, "editar una audiencia pasada debió permitirse"
+        assert not m_err.called, "no debió dar error al editar una fecha pasada"
     finally:
         _cleanup(db)
 

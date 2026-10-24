@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 import os
-from datetime import datetime
 
 from PyQt5.QtCore import QUrl
 from PyQt5.QtGui import QDesktopServices
@@ -209,12 +208,6 @@ class HearingDialog(QDialog):
         from db import HearingScheduleCreate
 
         kwargs = self._collect()
-        scheduled_at = kwargs["scheduled_at"]
-        if scheduled_at < datetime.now():
-            unchanged = self.hearing is not None and scheduled_at == self.hearing.scheduled_at
-            if not unchanged:
-                show_error(self, "No se puede programar una audiencia en una fecha pasada.")
-                return
         if self._pending_audio_src:
             try:
                 self._audio_path, self._audio_filename = (

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 import shutil
 import uuid
 from datetime import datetime
@@ -15,8 +14,6 @@ from ..exceptions import CaseFileNotFoundError
 from ..models import CaseFile, HearingSchedule
 from ..schemas import HearingScheduleCreate, HearingScheduleUpdate, ScheduledHearingItem
 from ._base import _ServiceMixin
-
-logger = logging.getLogger("guilliman")
 
 
 class HearingMethods(_ServiceMixin):
@@ -101,21 +98,15 @@ class HearingMethods(_ServiceMixin):
     def add_hearing(self, case_file_id: int, hearing_data: HearingScheduleCreate) -> int:
         """Agrega una audiencia a un expediente existente.
 
+        Se permite cualquier fecha (incluidas pasadas): las audiencias suelen
+        registrarse o completarse después de realizarse.
+
         Returns:
             El ID de la audiencia creada.
 
         Raises:
             CaseFileNotFoundError: Si el expediente padre no existe.
-            ValueError: Si la fecha programada es anterior a la fecha actual.
         """
-        if hearing_data.scheduled_at < datetime.now():
-            logger.warning(
-                "Attempted to schedule hearing in the past: %s",
-                hearing_data.scheduled_at,
-            )
-            raise ValueError(
-                "No se puede programar una audiencia en una fecha pasada."
-            )
         with session_scope(self._db_path) as session:
             case_file = session.get(CaseFile, case_file_id)
             if case_file is None:
