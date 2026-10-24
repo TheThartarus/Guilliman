@@ -76,8 +76,10 @@ class _HearingsSection:
                 row, 3, QTableWidgetItem(translate(h.status, HEARING_STATUS_LABELS))
             )
             self.hearings_table.setItem(row, 4, QTableWidgetItem(h.notes or ""))
+            audio = f"🎵 {h.audio_filename}" if h.audio_filename else ""
+            self.hearings_table.setItem(row, 5, QTableWidgetItem(audio))
             if is_past:
-                for col in range(5):
+                for col in range(6):
                     self.hearings_table.item(row, col).setForeground(gray)
 
     def _on_add_hearing(self) -> None:
@@ -128,9 +130,9 @@ class _HearingsSection:
 
         self.hearings_table = TableWidget()
         self.hearings_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self.hearings_table.setColumnCount(5)
+        self.hearings_table.setColumnCount(6)
         self.hearings_table.setHorizontalHeaderLabels(
-            ["ID", "Fecha/Hora", "Tipo", "Estado", "Notas"]
+            ["ID", "Fecha/Hora", "Tipo", "Estado", "Notas", "Audio"]
         )
         self.hearings_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.hearings_table.cellDoubleClicked.connect(self._on_hearing_double)

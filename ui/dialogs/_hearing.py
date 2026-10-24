@@ -5,7 +5,13 @@ from __future__ import annotations
 import logging
 from datetime import datetime
 
-from PyQt5.QtWidgets import QDialog, QFormLayout, QHBoxLayout, QVBoxLayout
+from PyQt5.QtWidgets import (
+    QDialog,
+    QFileDialog,
+    QFormLayout,
+    QHBoxLayout,
+    QVBoxLayout,
+)
 
 from qfluentwidgets import (
     BodyLabel,
@@ -39,6 +45,8 @@ from ._sizes import HEARING_DIALOG_HEIGHT, HEARING_DIALOG_WIDTH
 
 logger = logging.getLogger("guilliman")
 
+AUDIO_FILTER = "Audio (*.mp3 *.wav *.m4a *.ogg *.aac)"
+
 
 class HearingDialog(QDialog):
     """Alta/edición de una audiencia de un expediente."""
@@ -70,7 +78,18 @@ class HearingDialog(QDialog):
         make_uppercase(self._notes)
         self._fields["notes"] = self._notes
 
+        # Audio adjunto: se copia a la tienda del backend al seleccionarlo.
+        self._audio_path: str | None = None
+        self._audio_filename: str | None = None
+        self._audio_btn = PushButton("Seleccionar audio…")
+        self._audio_btn.clicked.connect(self._on_pick_audio)
+        self._clear_audio_btn = PushButton("Quitar audio")
+        self._clear_audio_btn.clicked.connect(self._clear_audio)
+        self._audio_label = BodyLabel("Sin audio")
+        self._set_audio(None, None)
+
         if hearing is not None:
+            self._set_audio(hearing.audio_path, hearing.audio_filename)
             self._scheduled_card.set(hearing.scheduled_at)
             if hearing.hearing_type:
                 # Busca por userData (valor almacenado); si no se encuentra
@@ -96,6 +115,11 @@ class HearingDialog(QDialog):
         form.addRow(BodyLabel("Tipo"), self._hearing_type)
         form.addRow(BodyLabel("Estado"), self._status)
         form.addRow(BodyLabel("Notas"), self._notes)
+        audio_row = QHBoxLayout()
+        audio_row.addWidget(self._audio_btn)
+        audio_row.addWidget(self._clear_audio_btn)
+        audio_row.addWidget(self._audio_label, 1)
+        form.addRow(BodyLabel("Audio"), audio_row)
         layout.addLayout(form)
 
         schedule_group = SettingCardGroup("Programación", self)
@@ -111,12 +135,38 @@ class HearingDialog(QDialog):
         buttons.addWidget(self.cancel_btn)
         layout.addLayout(buttons)
 
+    def _set_audio(self, path: str | None, filename: str | None) -> None:
+        self._audio_path = path
+        self._audio_filename = filename
+        self._audio_label.setText(filename or "Sin audio")
+        self._clear_audio_btn.setEnabled(bool(path))
+
+    def _on_pick_audio(self) -> None:
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Seleccionar audio", "", AUDIO_FILTER
+        )
+        if not path:
+            return
+        try:
+            # ponytail: método privado del backend; usar el público cuando exista.
+            rel_path, filename = self.app.service._copy_audio_to_store(path)
+        except OSError as exc:
+            logger.exception("Error al adjuntar audio a la audiencia")
+            show_error(self, f"No se pudo adjuntar el audio: {exc}")
+            return
+        self._set_audio(rel_path, filename)
+
+    def _clear_audio(self) -> None:
+        self._set_audio(None, None)
+
     def _collect(self) -> dict:
         return {
             "scheduled_at": self._scheduled_card.get(),
             "hearing_type": combo_current_data(self._hearing_type),
             "status": combo_current_data(self._status) or "Scheduled",
             "notes": (self._notes.toPlainText() or "").strip().upper() or None,
+            "audio_path": self._audio_path,
+            "audio_filename": self._audio_filename,
         }
 
     def _mark_errors(self, errors: dict[str, str]) -> None:
