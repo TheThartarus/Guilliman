@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import logging
+import shutil
+import uuid
 from datetime import datetime
+from pathlib import Path
 
 from sqlalchemy import select
 
-from ..database import session_scope
+from ..database import get_app_data_dir, session_scope
 from ..exceptions import CaseFileNotFoundError
 from ..models import CaseFile, HearingSchedule
 from ..schemas import HearingScheduleCreate, HearingScheduleUpdate, ScheduledHearingItem
@@ -18,6 +21,37 @@ logger = logging.getLogger("guilliman")
 
 class HearingMethods(_ServiceMixin):
     """Métodos de audiencias y listado de agenda."""
+
+    def _resolve_audio_dir(self) -> Path:
+        """Retorna ``<data_dir>/audios/``, creándola si no existe."""
+        audio_dir = get_app_data_dir() / "audios"
+        audio_dir.mkdir(parents=True, exist_ok=True)
+        return audio_dir
+
+    def _copy_audio_to_store(self, src_path: str) -> tuple[str, str]:
+        """Copia un archivo de audio al almacén local con nombre único.
+
+        Args:
+            src_path: Ruta al archivo de origen.
+
+        Returns:
+            Tupla ``(ruta_relativa, nombre_original)`` donde ``ruta_relativa`` es
+            relativa al directorio de datos de la app (idónea para guardar en BD)
+            y ``nombre_original`` es el nombre del archivo de origen para mostrar
+            al usuario.
+
+        Raises:
+            FileNotFoundError: Si el archivo de origen no existe.
+        """
+        src = Path(src_path)
+        if not src.exists():
+            raise FileNotFoundError(f"No se encontró el archivo de audio: {src_path}")
+        audio_dir = self._resolve_audio_dir()
+        unique_name = f"{uuid.uuid4().hex}_{src.name}"
+        dest = audio_dir / unique_name
+        shutil.copy2(src, dest)
+        rel_path = dest.relative_to(get_app_data_dir()).as_posix()
+        return rel_path, src.name
 
     def list_scheduled_hearings(
         self,

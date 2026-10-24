@@ -256,6 +256,8 @@ class HearingScheduleCreate(BaseModel):
     hearing_type: str | None = Field(None, max_length=100)
     status: str = Field("Scheduled", max_length=50)
     notes: str | None = None
+    audio_path: str | None = None
+    audio_filename: str | None = None
 
 
 class HearingScheduleUpdate(BaseModel):
@@ -267,6 +269,8 @@ class HearingScheduleUpdate(BaseModel):
     hearing_type: str | None = Field(None, max_length=100)
     status: str | None = Field(None, max_length=50)
     notes: str | None = None
+    audio_path: str | None = None
+    audio_filename: str | None = None
 
 
 class HearingScheduleRead(BaseModel):
@@ -278,6 +282,8 @@ class HearingScheduleRead(BaseModel):
     hearing_type: str | None = None
     status: str
     notes: str | None = None
+    audio_path: str | None = None
+    audio_filename: str | None = None
 
     model_config = {"from_attributes": True}
 
