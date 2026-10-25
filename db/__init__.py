@@ -17,6 +17,7 @@ from .exceptions import (
 from .schemas import (
     ActingOfficialCreate,
     ActingOfficialRead,
+    AudioIntegrityIssue,
     CaseFileCreate,
     CaseFileRead,
     CaseFileUpdate,
@@ -45,6 +46,7 @@ from .service import CaseFileService
 __all__ = [
     "ActingOfficialCreate",
     "ActingOfficialRead",
+    "AudioIntegrityIssue",
     "CaseFileService",
     "setup_logging",
     "CaseFileCreate",

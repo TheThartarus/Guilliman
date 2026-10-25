@@ -56,16 +56,20 @@ class CaseFileMethods(_ServiceMixin):
         indictment_date_to: date | None = None,
         hearing_from: datetime | None = None,
         hearing_to: datetime | None = None,
+        include_archived: bool = False,
     ):
         """Aplica filtros AND combinables sobre un statement de CaseFile.
 
         Extrae la lógica de filtrado compartida entre ``search_case_files``
         y ``count_case_files`` para evitar duplicación. El filtro de texto
-        libre (``query``) solo se aplica si no está vacío.
+        libre (``query``) solo se aplica si no está vacío. Los expedientes
+        archivados se excluyen salvo que ``include_archived`` sea True.
 
         Returns:
             El statement con los filtros aplicados.
         """
+        if not include_archived:
+            statement = statement.where(CaseFile.archived_at.is_(None))
         if query.strip():
             pattern = f"%{query.strip()}%"
             statement = statement.where(
@@ -126,6 +130,7 @@ class CaseFileMethods(_ServiceMixin):
         indictment_date_to: date | None = None,
         hearing_from: datetime | None = None,
         hearing_to: datetime | None = None,
+        include_archived: bool = False,
     ) -> list[CaseFileRead]:
         """Busca expedientes con filtros combinables (AND).
 
@@ -171,6 +176,7 @@ class CaseFileMethods(_ServiceMixin):
             indictment_date_to=indictment_date_to,
             hearing_from=hearing_from,
             hearing_to=hearing_to,
+            include_archived=include_archived,
         )
         statement = statement.order_by(CaseFile.case_number).limit(limit).offset(offset)
         with session_scope(self._db_path) as session:
@@ -190,6 +196,7 @@ class CaseFileMethods(_ServiceMixin):
         indictment_date_to: date | None = None,
         hearing_from: datetime | None = None,
         hearing_to: datetime | None = None,
+        include_archived: bool = False,
     ) -> int:
         """Cuenta expedientes que coinciden con los filtros de búsqueda.
 
@@ -210,6 +217,7 @@ class CaseFileMethods(_ServiceMixin):
             indictment_date_to=indictment_date_to,
             hearing_from=hearing_from,
             hearing_to=hearing_to,
+            include_archived=include_archived,
         )
         with session_scope(self._db_path) as session:
             return session.execute(statement).scalar_one()
@@ -294,6 +302,34 @@ class CaseFileMethods(_ServiceMixin):
                     updated_data.case_number,
                 )
                 raise DuplicateCaseNumberError(updated_data.case_number or "") from error
+            return True
+
+    def archive_case_file(self, case_file_id: int) -> bool:
+        """Archiva lógicamente un expediente (no borra datos ni audios).
+
+        Returns:
+            True si fue archivado; False si no existe o ya estaba archivado.
+        """
+        with session_scope(self._db_path) as session:
+            case_file = session.get(CaseFile, case_file_id)
+            if case_file is None or case_file.archived_at is not None:
+                return False
+            case_file.archived_at = datetime.now()
+            session.add(case_file)
+            return True
+
+    def unarchive_case_file(self, case_file_id: int) -> bool:
+        """Reactiva un expediente archivado.
+
+        Returns:
+            True si fue restaurado; False si no existe o no estaba archivado.
+        """
+        with session_scope(self._db_path) as session:
+            case_file = session.get(CaseFile, case_file_id)
+            if case_file is None or case_file.archived_at is None:
+                return False
+            case_file.archived_at = None
+            session.add(case_file)
             return True
 
     def delete_case_file(self, case_file_id: int) -> bool:

@@ -69,6 +69,9 @@ class CaseFile(Base):
     weapon_type: Mapped[str | None] = mapped_column(String(50))  # Arma de Fuego, Arma Blanca, etc.
     piece_count: Mapped[int | None] = mapped_column(Integer)  # N° de piezas del expediente
 
+    # Archivo lógico (soft delete): NULL = activo, fecha = archivado.
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.current_timestamp(), nullable=False
     )

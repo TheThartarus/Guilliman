@@ -407,6 +407,7 @@ class CaseFileRead(BaseModel):
     weapon_quantity: int | None = None
     weapon_type: str | None = None
     piece_count: int | None = None
+    archived_at: datetime | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
     defendants: list[DefendantRead] = []
@@ -437,3 +438,15 @@ class ScheduledHearingItem(BaseModel):
     notes: str | None = None
     has_audio: bool = False
     has_transcription: bool = False
+
+
+class AudioIntegrityIssue(BaseModel):
+    """Inconsistencia detectada en el almacén local de audios."""
+
+    case_file_id: int
+    case_number: str
+    hearing_id: int
+    scheduled_at: datetime
+    audio_path: str
+    audio_filename: str | None = None
+    reason: str  # "missing" | "outside_store"

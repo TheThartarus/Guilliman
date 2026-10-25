@@ -12,7 +12,12 @@ from sqlalchemy import func, select
 from ..database import get_app_data_dir, session_scope
 from ..exceptions import CaseFileNotFoundError
 from ..models import CaseFile, HearingSchedule
-from ..schemas import HearingScheduleCreate, HearingScheduleUpdate, ScheduledHearingItem
+from ..schemas import (
+    AudioIntegrityIssue,
+    HearingScheduleCreate,
+    HearingScheduleUpdate,
+    ScheduledHearingItem,
+)
 from ._base import _ServiceMixin
 
 
@@ -69,6 +74,7 @@ class HearingMethods(_ServiceMixin):
         statement = (
             select(HearingSchedule, CaseFile.case_number)
             .join(CaseFile, HearingSchedule.case_file_id == CaseFile.id)
+            .where(CaseFile.archived_at.is_(None))
             .order_by(HearingSchedule.scheduled_at)
         )
         if start_date is not None:
@@ -98,24 +104,69 @@ class HearingMethods(_ServiceMixin):
         return items
 
     def count_hearings_missing_audio(self) -> int:
-        """Cuenta las audiencias sin archivo de audio asociado."""
+        """Cuenta las audiencias (de expedientes activos) sin audio asociado."""
         statement = (
             select(func.count())
             .select_from(HearingSchedule)
+            .join(CaseFile, HearingSchedule.case_file_id == CaseFile.id)
             .where(HearingSchedule.audio_path.is_(None))
+            .where(CaseFile.archived_at.is_(None))
         )
         with session_scope(self._db_path) as session:
             return session.execute(statement).scalar_one()
 
     def count_hearings_missing_transcription(self) -> int:
-        """Cuenta las audiencias sin acta/transcripción registrada."""
+        """Cuenta las audiencias (de expedientes activos) sin acta registrada."""
         statement = (
             select(func.count())
             .select_from(HearingSchedule)
+            .join(CaseFile, HearingSchedule.case_file_id == CaseFile.id)
             .where(HearingSchedule.transcription.is_(None))
+            .where(CaseFile.archived_at.is_(None))
         )
         with session_scope(self._db_path) as session:
             return session.execute(statement).scalar_one()
+
+    def check_audio_integrity(self) -> list[AudioIntegrityIssue]:
+        """Lista audios referenciados que faltan o viven fuera del almacén.
+
+        Returns:
+            Lista de ``AudioIntegrityIssue`` ordenada por expediente y fecha.
+            Vacía si todos los audios referenciados existen dentro de
+            ``<data_dir>/audios/``.
+        """
+        statement = (
+            select(HearingSchedule, CaseFile.case_number)
+            .join(CaseFile, HearingSchedule.case_file_id == CaseFile.id)
+            .where(HearingSchedule.audio_path.is_not(None))
+            .order_by(CaseFile.case_number, HearingSchedule.scheduled_at)
+        )
+        data_dir = get_app_data_dir().resolve()
+        audio_dir = (data_dir / "audios").resolve()
+        issues: list[AudioIntegrityIssue] = []
+        with session_scope(self._db_path) as session:
+            for hearing, case_number in session.execute(statement).all():
+                target = (data_dir / hearing.audio_path).resolve()
+                try:
+                    target.relative_to(audio_dir)
+                except ValueError:
+                    reason = "outside_store"
+                else:
+                    reason = None if target.is_file() else "missing"
+                if reason is None:
+                    continue
+                issues.append(
+                    AudioIntegrityIssue(
+                        case_file_id=hearing.case_file_id,
+                        case_number=case_number,
+                        hearing_id=hearing.id,
+                        scheduled_at=hearing.scheduled_at,
+                        audio_path=hearing.audio_path,
+                        audio_filename=hearing.audio_filename,
+                        reason=reason,
+                    )
+                )
+        return issues
 
     def add_hearing(self, case_file_id: int, hearing_data: HearingScheduleCreate) -> int:
         """Agrega una audiencia a un expediente existente.
