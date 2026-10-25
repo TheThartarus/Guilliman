@@ -17,17 +17,20 @@ Desktop UI: PyQt5 + qfluentwidgets (FluentWindow). Windows-only, 32-bit target.
 - `case_detail_view/` — read-only detail of a case file (package, not single file).
   Split into mixins per entity: `_defendants.py`, `_victims.py`, `_witnesses.py`,
   `_documentaries.py`, `_experts.py`, `_hearings.py`. All combined in
-  `CaseDetailView` via multiple inheritance. `_hearings.py` shows an "Audio" column and
-  offers "Abrir audio" in the table context menu (resolves via `service.get_audio_abs_path`).
+  `CaseDetailView` via multiple inheritance. `_hearings.py` shows "Acta" and "Audio"
+  columns, an "Acta" button, and a context menu with edit acta, export acta (PDF/RTF)
+  and open audio (resolved via `service.get_audio_abs_path`).
 - `agenda_view.py` — calendar / agenda of scheduled hearings.
 - `settings.py` — theme persistence (light / dark) to `settings.json`.
 - `dialogs/` — entity dialogs, split into private modules:
   `_defendant.py` (`DefendantDialog`), `_person.py` (`VictimDialog`, `WitnessDialog`),
   `_record.py` (`DocumentaryDialog`, `ExpertDialog`), `_hearing.py` (`HearingDialog`),
+  `_transcription.py` (`HearingTranscriptionDialog`),
   `_cards.py` (`_DateCard`, `_DateTimeCard`, `_FlaggedDateCard`), `_misc.py` (`confirm_delete`, `pick_save_pdf`),
   `_sizes.py` (dialog dimension constants). All re-exported from `dialogs/__init__.py`.
   `HearingDialog` also attaches audio: it copies the file (via `service.store_audio_file`)
   only on save, so cancelling leaves no orphan, and can open/clear an existing audio.
+  `HearingTranscriptionDialog` edits the acta verbatim (no uppercasing/character filtering).
 - `exporters.py` — PDF generation (reportlab), pure (no PyQt dependency).
 - `shared.py` — pure helpers (labels, date format/parse, validators, uppercase + input
   restriction, InfoBar wrappers). Safe to import without PyQt present.
@@ -87,6 +90,8 @@ Desktop UI: PyQt5 + qfluentwidgets (FluentWindow). Windows-only, 32-bit target.
 ## PDF export (`exporters.py`)
 - `export_case_pdf(case: CaseFileRead, filepath)`, `export_agenda_pdf(items, start, end, filepath)`
   use reportlab.
+- `export_hearing_minutes_pdf(case, hearing, filepath)` / `export_hearing_minutes_rtf(...)`
+  render a hearing acta (RTF is pure ASCII with `\uN?` escapes, editable in Word).
 - Pure (no PyQt dependency) — takes db DTOs + `ui.shared` labels.
 - Uses Helvetica (WinAnsi) deliberately for Spanish accents; keep it unless you switch to a
   Unicode font with a registered face.

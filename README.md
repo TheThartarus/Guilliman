@@ -22,6 +22,9 @@ Aplicación de escritorio nativa para Windows diseñada para la gestión integra
 - **Audios de audiencias** — Adjunta la grabación de cada audiencia; el archivo se copia
   al equipo local para no depender del teléfono. Permite abrir/reproducir el audio desde
   el detalle del expediente.
+- **Acta por audiencia** — Redacta o pega la transcripción de cada audiencia y expórtala
+  a PDF (para imprimir) o RTF (editable en Word). La tabla de audiencias indica cuáles
+  ya tienen acta.
 - **Búsqueda de expedientes** — Por número, fiscalía u otros criterios.
 - **Exportación a PDF** — Del expediente individual y de la agenda completa (reportlab).
 - **Respaldo completo** — Un solo `.zip` con la base de datos y todos los audios (Ajustes).

@@ -60,7 +60,8 @@ Persistence + business logic. Pure Python (SQLAlchemy 2.0 + SQLite, pydantic). N
     `evacuation_date`, `additional_notes`.
   - `Expert`: `name`, `appeared` (bool), `appearance_date`, `additional_notes`.
   - `HearingSchedule`: `scheduled_at` (datetime), `hearing_type`, `status`, `notes`,
-    `audio_path` (relative to `get_app_data_dir()`), `audio_filename` (original name).
+    `transcription` (acta, free text), `audio_path` (relative to `get_app_data_dir()`),
+    `audio_filename` (original name).
 
 ## Schemas (`schemas.py`)
 - `*Create` = input validation.
@@ -75,7 +76,10 @@ Persistence + business logic. Pure Python (SQLAlchemy 2.0 + SQLite, pydantic). N
 - `ScheduledHearingItem` is a flat DTO for calendar/agenda views: `hearing_id`,
   `case_file_id`, `case_number`, `scheduled_at`, `hearing_type`, `status`, `notes`.
 - `HearingScheduleCreate` / `HearingScheduleUpdate` / `HearingScheduleRead` carry
-  `audio_path` + `audio_filename` (optional). The agenda item does not.
+  `audio_path` + `audio_filename` (optional) and `transcription` (acta). The agenda
+  item does not.
+- Hearing `transcription` is free text; never uppercase or filter it. `HearingScheduleUpdate`
+  PATCH semantics ensure editing other fields (or scheduling) does not clear it.
 - `DefendantStatusValue` is a `Literal` of the *current* Spanish domain
   (`"En Libertad" | "Detenido" | "Arresto Domiciliario"`). Old English values
   (`"Detained"`, `"Custody"`, `"Conditional release"`) are legacy data, not valid input.
