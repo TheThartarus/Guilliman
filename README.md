@@ -12,6 +12,8 @@ Aplicación de escritorio nativa para Windows diseñada para la gestión integra
 
 ## Funcionalidades
 
+- **Panel de inicio** — Contadores de expedientes, audiencias próximas (7 días) y
+  audiencias pendientes de audio o acta; tabla de las próximas audiencias.
 - **Gestión de expedientes** — Número de expediente único, fiscalía, fiscal, defensa, agencia aprehendadora, descripción del hecho, resumen, tipo de origen, estado de fallo y fechas procesales.
 - **Partes por expediente** (borrado en cascada al eliminar el expediente):
   - **Acusados** — Nombre, cédula, fecha de aprehensión, fecha de audiencia, dirección, teléfono y notas.
@@ -19,6 +21,10 @@ Aplicación de escritorio nativa para Windows diseñada para la gestión integra
   - **Peritos** — Nombre, comparecencia y fecha.
   - **Pruebas documentales** — Nombre, estado (en posesión / evacuada) con fechas.
 - **Agenda de audiencias** — Calendario con tipo, estado y notas por audiencia.
+  Exportable a PDF y a iCalendar (`.ics`) para importar en Outlook/Google Calendar.
+- **Búsqueda instantánea** — Los filtros de expedientes se aplican automáticamente
+  mientras se escribe (sin pulsar "Buscar"); los resultados pueden ordenarse haciendo
+  clic en los encabezados de columna.
 - **Audios de audiencias** — Adjunta la grabación de cada audiencia; el archivo se copia
   al equipo local para no depender del teléfono. Permite abrir/reproducir el audio desde
   el detalle del expediente.

@@ -74,7 +74,8 @@ Persistence + business logic. Pure Python (SQLAlchemy 2.0 + SQLite, pydantic). N
 - `CaseFileRead` includes nested `defendants`, `victims`, `witnesses`, `documentaries`,
   `experts`, `hearings` lists (eager `selectin`). No extra calls needed to read them.
 - `ScheduledHearingItem` is a flat DTO for calendar/agenda views: `hearing_id`,
-  `case_file_id`, `case_number`, `scheduled_at`, `hearing_type`, `status`, `notes`.
+  `case_file_id`, `case_number`, `scheduled_at`, `hearing_type`, `status`, `notes`,
+  `has_audio`, `has_transcription` (booleans for dashboard/agenda indicators).
 - `HearingScheduleCreate` / `HearingScheduleUpdate` / `HearingScheduleRead` carry
   `audio_path` + `audio_filename` (optional) and `transcription` (acta). The agenda
   item does not.
@@ -96,7 +97,8 @@ Persistence + business logic. Pure Python (SQLAlchemy 2.0 + SQLite, pydantic). N
   (date ranges). Empty `query` returns all matching records.
 - Children — each exposes `add_* -> int`, `update_* -> bool`, `delete_* -> bool`:
   defendants, victims, witnesses, documentaries, experts, hearings. Hearings also expose
-  `update_hearing_status(...)`.
+  `update_hearing_status(...)`, `count_hearings_missing_audio()` and
+  `count_hearings_missing_transcription()` (dashboard counters).
 - Hearing audio: `store_audio_file(src_path) -> (rel_path, filename)` copies the file
   into `<data_dir>/audios/` with a unique name and returns the DB-relative path;
   `get_audio_abs_path(rel_path) -> str` resolves it for playback. Passing

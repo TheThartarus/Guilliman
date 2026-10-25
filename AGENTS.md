@@ -29,8 +29,10 @@ Compact guidance for agents working in this repo. Signals only.
   etc.). To add a new entity, create a mixin in `db/services/`, add a
   schema in `db/schemas.py`, and mix it into `CaseFileService`.
 - `ui/` — views, dialogs, exporters, settings, and the app shell
-  (`ui.app_shell.AppShell` is the main `FluentWindow`).
-  Sub-views are split into private modules (e.g. `ui/case_detail_view/_defendants.py`).
+  (`ui.app_shell.AppShell` is the main `FluentWindow`). Startup lands on
+  `ui/dashboard_view.py` ("Inicio": counters + next 7 days); search filters are
+  debounced. Sub-views are split into private modules
+  (e.g. `ui/case_detail_view/_defendants.py`).
 - `main.py` — entry point: builds `QApplication`, applies the saved theme, calls
   `service.init_db()`, constructs `AppShell`, `showMaximized()`.
 - Data dir resolution (`db.database.get_app_data_dir`), in precedence:

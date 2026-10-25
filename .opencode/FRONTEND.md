@@ -12,7 +12,11 @@ Desktop UI: PyQt5 + qfluentwidgets (FluentWindow). Windows-only, 32-bit target.
 - `app_shell.py` — `AppShell(FluentWindow)` + `GuillimanApp` (shared state: `service` + `shell`)
   + `SettingsView` (theme combo + "Respaldar datos (BD + audios)" / "Restaurar datos",
   both operating on a `.zip` via `service.backup_data()` / `service.restore_data()`).
-- `case_search_view.py` — search / list of case files.
+- `dashboard_view.py` — "Inicio": stat cards (cases, upcoming 7 days, hearings missing
+  audio/acta) and a table of the next 7 days. Default view at startup.
+- `case_search_view.py` — search / list of case files; filters run automatically with a
+  300 ms debounce (`_schedule_search`). Results are sortable; row→case mapping uses
+  `Qt.UserRole` on the ID item (`_case_id_at`), so sorting never desaligns actions.
 - `case_form_view.py` — create / edit form for a case file and its child entities.
 - `case_detail_view/` — read-only detail of a case file (package, not single file).
   Split into mixins per entity: `_defendants.py`, `_victims.py`, `_witnesses.py`,
@@ -20,7 +24,8 @@ Desktop UI: PyQt5 + qfluentwidgets (FluentWindow). Windows-only, 32-bit target.
   `CaseDetailView` via multiple inheritance. `_hearings.py` shows "Acta" and "Audio"
   columns, an "Acta" button, and a context menu with edit acta, export acta (PDF/RTF)
   and open audio (resolved via `service.get_audio_abs_path`).
-- `agenda_view.py` — calendar / agenda of scheduled hearings.
+- `agenda_view.py` — calendar / agenda of scheduled hearings; exports PDF and iCalendar
+  (`.ics`).
 - `settings.py` — theme persistence (light / dark) to `settings.json`.
 - `dialogs/` — entity dialogs, split into private modules:
   `_defendant.py` (`DefendantDialog`), `_person.py` (`VictimDialog`, `WitnessDialog`),
@@ -37,7 +42,8 @@ Desktop UI: PyQt5 + qfluentwidgets (FluentWindow). Windows-only, 32-bit target.
 - `date_pickers.py` — Spanish month localization for qfluentwidgets `DatePicker`.
 
 ## Navigation (`AppShell`)
-- Fixed sub-interfaces (objectName = route key): `search`, `new`, `agenda`, `settings`.
+- Fixed sub-interfaces (objectName = route key): `dashboard`, `search`, `new`, `agenda`,
+  `settings`, `about`. Startup lands on `dashboard`.
 - Dynamic routes for case detail / edit are added via `addSubInterface` with keys
   `detail-{case_id}` / `edit-{case_id}` and removed by `_close_route`. When adding a
   new dynamic view, follow this key + `on_close=self._close_route` pattern.
@@ -90,6 +96,7 @@ Desktop UI: PyQt5 + qfluentwidgets (FluentWindow). Windows-only, 32-bit target.
 ## PDF export (`exporters.py`)
 - `export_case_pdf(case: CaseFileRead, filepath)`, `export_agenda_pdf(items, start, end, filepath)`
   use reportlab.
+- `export_agenda_ics(items, filepath)` writes RFC 5545 iCalendar (CRLF, escaped text).
 - `export_hearing_minutes_pdf(case, hearing, filepath)` / `export_hearing_minutes_rtf(...)`
   render a hearing acta (RTF is pure ASCII with `\uN?` escapes, editable in Word).
 - Pure (no PyQt dependency) — takes db DTOs + `ui.shared` labels.
