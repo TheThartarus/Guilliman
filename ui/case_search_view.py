@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import logging
 
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtWidgets import (
     QAbstractItemView,
     QFileDialog,
@@ -59,7 +59,6 @@ class CaseSearchView(QWidget):
     def __init__(self, app) -> None:
         super().__init__()
         self.app = app
-        self._rows: list[int] = []  # case_id por fila
         self._last_cases: list[CaseFileRead] = []  # resultados de la última búsqueda
         self._page = 0  # página actual (0-indexed)
         self._page_size = 50
@@ -70,6 +69,12 @@ class CaseSearchView(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(24, 22, 24, 22)
         layout.setSpacing(12)
+
+        # Debounce de la búsqueda instantánea.
+        self._search_timer = QTimer(self)
+        self._search_timer.setSingleShot(True)
+        self._search_timer.setInterval(300)
+        self._search_timer.timeout.connect(self._do_search)
 
         layout.addWidget(SubtitleLabel("Expedientes"))
 
@@ -137,6 +142,17 @@ class CaseSearchView(QWidget):
         row3.addStretch(1)
         f_layout.addLayout(row3)
 
+        # Búsqueda instantánea: cualquier cambio en filtros programa la consulta.
+        for field in (
+            self.query,
+            self.defendant_name,
+            self.victim_name,
+            self.witness_name,
+        ):
+            field.textChanged.connect(self._schedule_search)
+        for combo in (self.defendant_status, self.verdict_status, self.crime_type):
+            combo.currentIndexChanged.connect(self._schedule_search)
+
         layout.addWidget(f_widget)
 
         # --- Resultados ---
@@ -150,6 +166,7 @@ class CaseSearchView(QWidget):
         self.table.horizontalHeader().setDefaultAlignment(Qt.AlignCenter)
         self.table.verticalHeader().setDefaultAlignment(Qt.AlignCenter)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.table.setSortingEnabled(True)
         self.table.cellDoubleClicked.connect(self._on_row_double_clicked)
         self.table.setContextMenuPolicy(Qt.CustomContextMenu)
         self.table.customContextMenuRequested.connect(self._on_context_menu)
@@ -183,7 +200,13 @@ class CaseSearchView(QWidget):
         self._page = 0
         self._do_search()
 
+    def _schedule_search(self, *_args) -> None:
+        """Programa una búsqueda tras una pausa de tecleo (debounce)."""
+        self._page = 0
+        self._search_timer.start()
+
     def _do_search(self) -> None:
+        self._search_timer.stop()
         query = (self.query.text() or "").strip()
         defendant_status = combo_current_data(self.defendant_status) or None
         verdict_status_display = combo_current_data(self.verdict_status) or None
@@ -229,22 +252,26 @@ class CaseSearchView(QWidget):
             return
 
         self._last_cases = cases
-        self._rows = [c.id for c in cases]
+        self.table.setSortingEnabled(False)
         self.table.setRowCount(len(cases))
         for row, case in enumerate(cases):
+            id_item = QTableWidgetItem()
+            id_item.setData(Qt.DisplayRole, case.id)
+            id_item.setData(Qt.UserRole, case.id)
+            id_item.setTextAlignment(Qt.AlignCenter)
+            self.table.setItem(row, 0, id_item)
             for col, value in enumerate(
                 (
-                    str(case.id),
                     case.case_number or "",
                     case.prosecutor_file_number or "",
                     case.prosecutor_name or "",
-                )
+                ),
+                start=1,
             ):
                 item = QTableWidgetItem(value)
-                item.setTextAlignment(
-                    Qt.AlignCenter if col == 0 else Qt.AlignLeft | Qt.AlignVCenter
-                )
+                item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
                 self.table.setItem(row, col, item)
+        self.table.setSortingEnabled(True)
 
         self._update_pager()
 
@@ -270,13 +297,19 @@ class CaseSearchView(QWidget):
         export_cases_csv(self._last_cases, path)
         show_info(self, "Listado CSV exportado.")
 
+    def _case_id_at(self, row: int) -> int | None:
+        """Retorna el ID del expediente en una fila (robusto ante el ordenamiento)."""
+        item = self.table.item(row, 0)
+        return item.data(Qt.UserRole) if item is not None else None
+
     def _on_row_double_clicked(self, row: int, _col: int) -> None:
-        if 0 <= row < len(self._rows):
-            self.app.shell.open_case_detail(self._rows[row])
+        case_id = self._case_id_at(row)
+        if case_id is not None:
+            self.app.shell.open_case_detail(case_id)
 
     def _on_context_menu(self, pos) -> None:
         row = self.table.indexAt(pos).row()
-        if not (0 <= row < len(self._rows)):
+        if self._case_id_at(row) is None:
             return
         menu = RoundMenu(parent=self)
         edit_action = Action("Editar")
@@ -288,14 +321,14 @@ class CaseSearchView(QWidget):
         menu.exec(self.table.viewport().mapToGlobal(pos))
 
     def _edit_case(self, row: int) -> None:
-        if not (0 <= row < len(self._rows)):
-            return
-        self.app.shell.open_case_form(self._rows[row])
+        case_id = self._case_id_at(row)
+        if case_id is not None:
+            self.app.shell.open_case_form(case_id)
 
     def _delete_case(self, row: int) -> None:
-        if not (0 <= row < len(self._rows)):
+        case_id = self._case_id_at(row)
+        if case_id is None:
             return
-        case_id = self._rows[row]
         if not confirm_delete(
             self,
             "¿Eliminar este expediente y todos sus registros relacionados?",
