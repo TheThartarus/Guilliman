@@ -25,6 +25,7 @@ from PyQt5.QtWidgets import (
 from qfluentwidgets import (
     Action,
     BodyLabel,
+    ComboBox,
     DatePicker,
     PrimaryPushButton,
     PushButton,
@@ -42,7 +43,7 @@ from ui.shared import (
     format_datetime,
     translate,
 )
-from ui.widgets import show_error, show_info
+from ui.widgets import combo_current_data, show_error, show_info
 
 logger = logging.getLogger("guilliman")
 
@@ -70,6 +71,11 @@ class AgendaView(QWidget):
         self.end_date = DatePicker()
         self.end_date.setDate(QDate.currentDate())
         apply_spanish_date_picker(self.end_date)
+        self.status_filter = ComboBox()
+        self.status_filter.addItem("Todos los estados", userData="")
+        for value, label in HEARING_STATUS_LABELS.items():
+            self.status_filter.addItem(label, userData=value)
+        self.status_filter.currentIndexChanged.connect(self.refresh)
         self.filter_btn = PrimaryPushButton("Filtrar")
         self.filter_btn.clicked.connect(self.refresh)
         self.clear_btn = PushButton("Limpiar filtros")
@@ -82,6 +88,8 @@ class AgendaView(QWidget):
         range_row.addWidget(self.start_date, 1)
         range_row.addWidget(BodyLabel("Hasta:"))
         range_row.addWidget(self.end_date, 1)
+        range_row.addWidget(BodyLabel("Estado:"))
+        range_row.addWidget(self.status_filter, 1)
         range_row.addWidget(self.filter_btn)
         range_row.addWidget(self.clear_btn)
         range_row.addWidget(self.export_btn)
@@ -102,11 +110,13 @@ class AgendaView(QWidget):
         layout.addWidget(self.table, 1)
 
     def refresh(self) -> None:
-        """Carga las audiencias en el rango seleccionado."""
+        """Carga las audiencias en el rango y estado seleccionados."""
         start = datetime.combine(self.start_date.getDate().toPyDate(), datetime.min.time())
         end = datetime.combine(self.end_date.getDate().toPyDate(), datetime.max.time())
         try:
-            items = self.app.service.list_scheduled_hearings(start, end)
+            items = self.app.service.list_scheduled_hearings(
+                start, end, status=self._selected_status()
+            )
         except ValueError as exc:
             logger.exception("Error al cargar audiencias")
             show_error(self, f"Error al cargar: {exc}")
@@ -134,7 +144,12 @@ class AgendaView(QWidget):
         today = QDate.currentDate()
         self.start_date.setDate(today)
         self.end_date.setDate(today)
+        self.status_filter.setCurrentIndex(0)
         self.refresh()
+
+    def _selected_status(self) -> str | None:
+        """Retorna el estado seleccionado en el filtro (None = todos)."""
+        return combo_current_data(self.status_filter) or None
 
     def _on_row_double(self, row: int, _col: int) -> None:
         """Doble clic en la agenda abre el detalle del expediente asociado."""
@@ -220,6 +235,7 @@ class AgendaView(QWidget):
         items = self.app.service.list_scheduled_hearings(
             datetime.combine(start, datetime.min.time()),
             datetime.combine(end, datetime.max.time()),
+            status=self._selected_status(),
         )
         try:
             export_agenda_pdf(items, start, end, path)
@@ -249,6 +265,7 @@ class AgendaView(QWidget):
         items = self.app.service.list_scheduled_hearings(
             datetime.combine(start, datetime.min.time()),
             datetime.combine(end, datetime.max.time()),
+            status=self._selected_status(),
         )
         try:
             export_agenda_ics(items, path)

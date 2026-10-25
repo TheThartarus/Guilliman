@@ -33,4 +33,6 @@ def test_export_agenda_ics(tmp_path) -> None:
     assert "DTEND:20260501T100000" in raw
     assert "SUMMARY:Audiencia A\\;1 - Apertura de Juicio" in raw
     assert "DESCRIPTION:Programada\\nLínea 1\\nLínea 2" in raw
+    assert "BEGIN:VALARM" in raw
+    assert "TRIGGER:-P1D" in raw
     assert raw.rstrip().endswith("END:VCALENDAR")

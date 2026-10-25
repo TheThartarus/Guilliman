@@ -732,6 +732,11 @@ def export_agenda_ics(
                 f"DTEND:{end}",
                 f"SUMMARY:{_ics_escape(summary)}",
                 f"DESCRIPTION:{_ics_escape(description)}",
+                "BEGIN:VALARM",
+                "ACTION:DISPLAY",
+                f"DESCRIPTION:{_ics_escape('Recordatorio de audiencia')}",
+                "TRIGGER:-P1D",
+                "END:VALARM",
                 "END:VEVENT",
             ]
         )
