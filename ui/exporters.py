@@ -9,7 +9,7 @@ db. No depende de ningún toolkit de UI: solo depende de ``reportlab``, los esqu
 from __future__ import annotations
 
 import csv
-from datetime import date, datetime
+from datetime import date, datetime, timedelta, timezone
 from xml.sax.saxutils import escape as _xml_escape
 
 from reportlab.lib import colors
@@ -680,6 +680,64 @@ def export_agenda_pdf(
         title="Guilliman - Agenda de Audiencias",
     )
     doc.build(story)
+
+
+# --------------------------------------------------------------------------- #
+# Exportación de agenda a iCalendar (.ics)
+# --------------------------------------------------------------------------- #
+def _ics_escape(value) -> str:
+    """Escapa un texto según RFC 5545 (iCalendar)."""
+    text = "" if value is None else str(value)
+    return (
+        text.replace("\\", "\\\\")
+        .replace(";", "\\;")
+        .replace(",", "\\,")
+        .replace("\r\n", "\\n")
+        .replace("\n", "\\n")
+        .replace("\r", "\\n")
+    )
+
+
+def export_agenda_ics(
+    items: list[ScheduledHearingItem], filepath: str
+) -> None:
+    """Genera la agenda de audiencias en formato iCalendar (.ics).
+
+    Los eventos usan hora local flotante y una duración fija de una hora (la
+    audiencia no almacena hora de fin).
+    """
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    lines = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//Guilliman//Agenda//ES",
+        "CALSCALE:GREGORIAN",
+    ]
+    for item in sorted(items, key=lambda hh: hh.scheduled_at):
+        start = item.scheduled_at.strftime("%Y%m%dT%H%M%S")
+        end = (item.scheduled_at + timedelta(hours=1)).strftime("%Y%m%dT%H%M%S")
+        summary = (
+            f"Audiencia {item.case_number} - "
+            f"{translate(item.hearing_type, HEARING_TYPE_LABELS)}"
+        )
+        description = translate(item.status, HEARING_STATUS_LABELS)
+        if item.notes:
+            description = f"{description}\n{item.notes}"
+        lines.extend(
+            [
+                "BEGIN:VEVENT",
+                f"UID:guilliman-{item.hearing_id}@guilliman.local",
+                f"DTSTAMP:{stamp}",
+                f"DTSTART:{start}",
+                f"DTEND:{end}",
+                f"SUMMARY:{_ics_escape(summary)}",
+                f"DESCRIPTION:{_ics_escape(description)}",
+                "END:VEVENT",
+            ]
+        )
+    lines.append("END:VCALENDAR")
+    with open(filepath, "w", encoding="utf-8", newline="") as handle:
+        handle.write("\r\n".join(lines) + "\r\n")
 
 
 # --------------------------------------------------------------------------- #

@@ -14,6 +14,7 @@ from datetime import datetime
 from PyQt5.QtCore import QDate, Qt
 from PyQt5.QtWidgets import (
     QAbstractItemView,
+    QFileDialog,
     QHBoxLayout,
     QHeaderView,
     QTableWidgetItem,
@@ -34,7 +35,7 @@ from qfluentwidgets import (
 
 from ui.date_pickers import apply_spanish_date_picker
 from ui.dialogs import HearingDialog, confirm_delete, pick_save_pdf
-from ui.exporters import export_agenda_pdf
+from ui.exporters import export_agenda_ics, export_agenda_pdf
 from ui.shared import (
     HEARING_STATUS_LABELS,
     HEARING_TYPE_LABELS,
@@ -75,6 +76,8 @@ class AgendaView(QWidget):
         self.clear_btn.clicked.connect(self._on_clear_filters)
         self.export_btn = PushButton("Exportar PDF")
         self.export_btn.clicked.connect(self._on_export)
+        self.export_ics_btn = PushButton("Exportar .ics")
+        self.export_ics_btn.clicked.connect(self._on_export_ics)
         range_row.addWidget(BodyLabel("Desde:"))
         range_row.addWidget(self.start_date, 1)
         range_row.addWidget(BodyLabel("Hasta:"))
@@ -82,6 +85,7 @@ class AgendaView(QWidget):
         range_row.addWidget(self.filter_btn)
         range_row.addWidget(self.clear_btn)
         range_row.addWidget(self.export_btn)
+        range_row.addWidget(self.export_ics_btn)
         layout.addLayout(range_row)
 
         self.table = TableWidget()
@@ -224,3 +228,32 @@ class AgendaView(QWidget):
             show_error(self, f"Error al exportar: {exc}")
             return
         show_info(self, "PDF de la agenda generado.")
+
+    def _on_export_ics(self) -> None:
+        """Exporta las audiencias del rango a un archivo iCalendar (.ics)."""
+        if not self._rows:
+            show_error(self, "No hay audiencias en el rango para exportar.")
+            return
+        path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Exportar agenda .ics",
+            "agenda_de_audiencias.ics",
+            "iCalendar (*.ics)",
+        )
+        if not path:
+            return
+        if not path.lower().endswith(".ics"):
+            path += ".ics"
+        start = self.start_date.getDate().toPyDate()
+        end = self.end_date.getDate().toPyDate()
+        items = self.app.service.list_scheduled_hearings(
+            datetime.combine(start, datetime.min.time()),
+            datetime.combine(end, datetime.max.time()),
+        )
+        try:
+            export_agenda_ics(items, path)
+        except Exception as exc:  # noqa: BLE001 - se informa al usuario
+            logger.exception("Error al exportar .ics de agenda")
+            show_error(self, f"Error al exportar: {exc}")
+            return
+        show_info(self, "Agenda .ics exportada.")
