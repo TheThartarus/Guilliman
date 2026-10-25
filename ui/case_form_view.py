@@ -306,7 +306,8 @@ class CaseFormView(QWidget):
 
         self._crimes_buttons = QWidget()
         crimes_row = QHBoxLayout(self._crimes_buttons)
-        crimes_row.setContentsMargins(0, 0, 0, 0)
+        crimes_row.setContentsMargins(0, 0, 0, 10)
+        crimes_row.setSpacing(8)
         self.add_crime_btn = PushButton("Agregar delito")
         self.add_crime_btn.clicked.connect(self._on_add_crime)
         self.edit_crime_btn = PushButton("Editar delito")
