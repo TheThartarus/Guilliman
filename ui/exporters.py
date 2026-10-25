@@ -32,6 +32,7 @@ from ui.shared import (
     HEARING_STATUS_LABELS,
     HEARING_TYPE_LABELS,
     ORIGIN_TYPE_LABELS,
+    VERDICT_STATUS_LABELS,
     format_date,
     format_datetime,
     translate,
@@ -112,7 +113,12 @@ _USABLE_WIDTH = _PAGE[0] - 2 * 15 * mm
 # Exportación de expediente
 # --------------------------------------------------------------------------- #
 def export_case_pdf(case: CaseFileRead, filepath: str) -> None:
-    """Genera el PDF completo de un expediente en ``filepath``."""
+    """Genera el PDF completo de un expediente en ``filepath``.
+
+    Exporta **todos** los campos del expediente y de todas sus entidades
+    relacionadas (acusados, víctimas, testigos, documentales, expertos,
+    actuantes y audiencias), sin excepción.
+    """
     story = []
 
     story.append(Paragraph(_esc(f"Guilliman - Expediente {case.case_number}"), _TITLE))
@@ -121,14 +127,21 @@ def export_case_pdf(case: CaseFileRead, filepath: str) -> None:
     # --- Datos generales ---
     story.append(Paragraph("Datos generales", _HEADING))
     general_rows = [
+        [_p("Nº Expediente", _CELL_B), _p(case.case_number)],
+        [_p("MP", _CELL_B), _p(case.prosecutor_file_number)],
         [_p("Fiscal", _CELL_B), _p(case.prosecutor_name)],
         [_p("Defensor", _CELL_B), _p(case.defense_attorney)],
         [_p("Audiencia Actual", _CELL_B), _p(case.current_hearing_type)],
         [_p("Origen", _CELL_B), _p(translate(case.origin_type, ORIGIN_TYPE_LABELS))],
+        [_p("Procedencia", _CELL_B), _p(case.origin_location)],
+        [_p("Ubicación", _CELL_B), _p(case.location)],
         [_p("Tipo de Delito", _CELL_B), _p(case.crime_type)],
-        [_p("Cantidad de Droga", _CELL_B), _p(str(case.drug_quantity))],
+        [_p("Emblemático", _CELL_B), _p("Sí" if case.is_emblematic else "No")],
+        [_p("Seudónimo", _CELL_B), _p(case.pseudonym)],
+        [_p("N° Piezas", _CELL_B), _p(case.piece_count)],
+        [_p("Cantidad de Droga", _CELL_B), _p(case.drug_quantity)],
         [_p("Tipo de Droga", _CELL_B), _p(case.drug_type)],
-        [_p("Cantidad de Armas", _CELL_B), _p(str(case.weapon_quantity))],
+        [_p("Cantidad de Armas", _CELL_B), _p(case.weapon_quantity)],
         [_p("Tipo de Armas", _CELL_B), _p(case.weapon_type)],
         [_p("Descripción del delito", _CELL_B), _p(case.offense_description)],
         [_p("Resumen de hechos", _CELL_B), _p(case.facts_summary)],
@@ -152,6 +165,8 @@ def export_case_pdf(case: CaseFileRead, filepath: str) -> None:
         [_p("Apertura a Juicio", _CELL_B), _p(format_date(case.trial_opening_date))],
         [_p("Pase a Juicio", _CELL_B), _p(format_date(case.trial_transfer_date))],
         [_p("Ingreso a Juicio", _CELL_B), _p(format_date(case.trial_entry_date))],
+        [_p("Entrada a Control", _CELL_B), _p(format_date(case.control_entry_date))],
+        [_p("Salida de Control", _CELL_B), _p(format_date(case.control_exit_date))],
     ]
     story.append(
         Table(
@@ -166,9 +181,14 @@ def export_case_pdf(case: CaseFileRead, filepath: str) -> None:
     defendant_header = [
         _p("Nombre", _HEADER),
         _p("Cédula", _HEADER),
+        _p("Fecha Nacimiento", _HEADER),
+        _p("Fecha Aprehensión", _HEADER),
+        _p("Audiencia Presentación", _HEADER),
+        _p("Estado", _HEADER),
+        _p("Veredicto", _HEADER),
+        _p("Organismo Aprehensor", _HEADER),
         _p("Dirección", _HEADER),
         _p("Teléfono", _HEADER),
-        _p("Fecha aprehensión", _HEADER),
         _p("Notas", _HEADER),
     ]
     defendant_rows = [defendant_header]
@@ -177,9 +197,14 @@ def export_case_pdf(case: CaseFileRead, filepath: str) -> None:
             [
                 _p(d.full_name),
                 _p(d.national_id),
+                _p(format_date(d.birth_date)),
+                _p(format_date(d.arrest_date)),
+                _p(format_date(d.presentation_hearing_date)),
+                _p(d.status),
+                _p(translate(d.verdict_status, VERDICT_STATUS_LABELS)),
+                _p(d.arresting_agency),
                 _p(d.address),
                 _p(d.phone),
-                _p(format_date(d.arrest_date)),
                 _p(d.additional_notes),
             ]
         )
@@ -187,14 +212,20 @@ def export_case_pdf(case: CaseFileRead, filepath: str) -> None:
         Table(
             defendant_rows,
             colWidths=[
-                _USABLE_WIDTH * 0.24,
-                _USABLE_WIDTH * 0.13,
-                _USABLE_WIDTH * 0.17,
-                _USABLE_WIDTH * 0.13,
-                _USABLE_WIDTH * 0.15,
-                _USABLE_WIDTH * 0.18,
+                _USABLE_WIDTH * 0.14,
+                _USABLE_WIDTH * 0.09,
+                _USABLE_WIDTH * 0.09,
+                _USABLE_WIDTH * 0.09,
+                _USABLE_WIDTH * 0.11,
+                _USABLE_WIDTH * 0.07,
+                _USABLE_WIDTH * 0.09,
+                _USABLE_WIDTH * 0.10,
+                _USABLE_WIDTH * 0.09,
+                _USABLE_WIDTH * 0.06,
+                _USABLE_WIDTH * 0.07,
             ],
             style=_grid_style(header=True),
+            repeatRows=1,
         )
     )
 
@@ -203,6 +234,9 @@ def export_case_pdf(case: CaseFileRead, filepath: str) -> None:
     victim_header = [
         _p("Nombre", _HEADER),
         _p("Cédula", _HEADER),
+        _p("Fecha Nacimiento", _HEADER),
+        _p("Compareció", _HEADER),
+        _p("Fecha Comparecencia", _HEADER),
         _p("Dirección", _HEADER),
         _p("Teléfono", _HEADER),
         _p("Notas", _HEADER),
@@ -213,6 +247,9 @@ def export_case_pdf(case: CaseFileRead, filepath: str) -> None:
             [
                 _p(v.full_name),
                 _p(v.national_id),
+                _p(format_date(v.birth_date)),
+                _p("SÍ" if v.appeared else "NO"),
+                _p(format_date(v.appearance_date)),
                 _p(v.address),
                 _p(v.phone),
                 _p(v.additional_notes),
@@ -222,13 +259,17 @@ def export_case_pdf(case: CaseFileRead, filepath: str) -> None:
         Table(
             victim_rows,
             colWidths=[
-                _USABLE_WIDTH * 0.28,
+                _USABLE_WIDTH * 0.18,
+                _USABLE_WIDTH * 0.10,
+                _USABLE_WIDTH * 0.10,
+                _USABLE_WIDTH * 0.08,
+                _USABLE_WIDTH * 0.11,
                 _USABLE_WIDTH * 0.15,
-                _USABLE_WIDTH * 0.25,
-                _USABLE_WIDTH * 0.15,
-                _USABLE_WIDTH * 0.17,
+                _USABLE_WIDTH * 0.10,
+                _USABLE_WIDTH * 0.18,
             ],
             style=_grid_style(header=True),
+            repeatRows=1,
         )
     )
 
@@ -237,6 +278,8 @@ def export_case_pdf(case: CaseFileRead, filepath: str) -> None:
     witness_header = [
         _p("Nombre", _HEADER),
         _p("Cédula", _HEADER),
+        _p("Compareció", _HEADER),
+        _p("Fecha Comparecencia", _HEADER),
         _p("Dirección", _HEADER),
         _p("Teléfono", _HEADER),
         _p("Notas", _HEADER),
@@ -247,6 +290,8 @@ def export_case_pdf(case: CaseFileRead, filepath: str) -> None:
             [
                 _p(w.full_name),
                 _p(w.national_id),
+                _p("SÍ" if w.appeared else "NO"),
+                _p(format_date(w.appearance_date)),
                 _p(w.address),
                 _p(w.phone),
                 _p(w.additional_notes),
@@ -256,13 +301,16 @@ def export_case_pdf(case: CaseFileRead, filepath: str) -> None:
         Table(
             witness_rows,
             colWidths=[
-                _USABLE_WIDTH * 0.28,
+                _USABLE_WIDTH * 0.18,
+                _USABLE_WIDTH * 0.10,
+                _USABLE_WIDTH * 0.08,
+                _USABLE_WIDTH * 0.11,
                 _USABLE_WIDTH * 0.15,
-                _USABLE_WIDTH * 0.25,
-                _USABLE_WIDTH * 0.15,
-                _USABLE_WIDTH * 0.17,
+                _USABLE_WIDTH * 0.10,
+                _USABLE_WIDTH * 0.18,
             ],
             style=_grid_style(header=True),
+            repeatRows=1,
         )
     )
 
@@ -300,6 +348,39 @@ def export_case_pdf(case: CaseFileRead, filepath: str) -> None:
                 _USABLE_WIDTH * 0.16,
             ],
             style=_grid_style(header=True),
+            repeatRows=1,
+        )
+    )
+
+    # --- Actuantes (funcionarios actuantes / aprehensores) ---
+    story.append(Paragraph("Actuantes", _HEADING))
+    acting_header = [
+        _p("Nombre", _HEADER),
+        _p("Compareció", _HEADER),
+        _p("Fecha comparecencia", _HEADER),
+        _p("Notas", _HEADER),
+    ]
+    acting_rows = [acting_header]
+    for o in case.acting_officials:
+        acting_rows.append(
+            [
+                _p(o.name),
+                _p("SÍ" if o.appeared else "NO"),
+                _p(format_date(o.appearance_date)),
+                _p(o.additional_notes),
+            ]
+        )
+    story.append(
+        Table(
+            acting_rows,
+            colWidths=[
+                _USABLE_WIDTH * 0.34,
+                _USABLE_WIDTH * 0.15,
+                _USABLE_WIDTH * 0.35,
+                _USABLE_WIDTH * 0.16,
+            ],
+            style=_grid_style(header=True),
+            repeatRows=1,
         )
     )
 
@@ -331,6 +412,7 @@ def export_case_pdf(case: CaseFileRead, filepath: str) -> None:
                 _USABLE_WIDTH * 0.16,
             ],
             style=_grid_style(header=True),
+            repeatRows=1,
         )
     )
 
@@ -362,6 +444,7 @@ def export_case_pdf(case: CaseFileRead, filepath: str) -> None:
                 _USABLE_WIDTH * 0.37,
             ],
             style=_grid_style(header=True),
+            repeatRows=1,
         )
     )
 
