@@ -215,6 +215,35 @@ def test_hearing_transcription_dialog_saves():
         _cleanup(db)
 
 
+def test_hearing_transcription_dialog_autosaves():
+    svc, db = _make_service()
+    try:
+        case_id = svc.create_case_file(CaseFileCreate(case_number="MP-AUTOSAVE"))
+        svc.add_hearing(
+            case_id,
+            HearingScheduleCreate(scheduled_at=datetime.now() + timedelta(days=1)),
+        )
+        hearing = svc.get_case_file_by_id(case_id).hearings[0]
+        dlg = HearingTranscriptionDialog(None, _fake_app(svc), hearing)
+
+        dlg._editor.setPlainText("ACTA AUTOGUARDADA")
+        assert dlg._autosave()
+        assert (
+            svc.get_case_file_by_id(case_id).hearings[0].transcription
+            == "ACTA AUTOGUARDADA"
+        )
+
+        # Cerrar sin pulsar "Guardar" también persiste los cambios pendientes.
+        dlg._editor.setPlainText("SEGUNDA VERSION")
+        dlg.reject()
+        assert (
+            svc.get_case_file_by_id(case_id).hearings[0].transcription
+            == "SEGUNDA VERSION"
+        )
+    finally:
+        _cleanup(db)
+
+
 def test_defendant_dialog_input_validators():
     """El acusado usa los mismos validadores que victimas/testigos."""
     svc, db = _make_service()
