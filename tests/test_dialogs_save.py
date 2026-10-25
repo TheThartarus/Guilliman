@@ -28,8 +28,8 @@ from datetime import date, datetime, timedelta  # noqa: E402
 from db import CaseFileCreate, CaseFileService, HearingScheduleCreate  # noqa: E402
 from db.database import dispose_engine, reset_session_factory  # noqa: E402
 from ui import dialogs  # noqa: E402
-from ui.dialogs import DefendantDialog, HearingDialog  # noqa: E402
-from ui.dialogs import _defendant, _hearing  # noqa: E402
+from ui.dialogs import DefendantDialog, HearingDialog, HearingTranscriptionDialog  # noqa: E402
+from ui.dialogs import _defendant, _hearing, _transcription  # noqa: E402
 from ui.widgets import combo_set_data  # noqa: E402
 
 
@@ -187,6 +187,30 @@ def test_hearing_dialog_allows_unchanged_past_date_on_edit():
 
         assert m_info.called, "editar una audiencia pasada debió permitirse"
         assert not m_err.called, "no debió dar error al editar una fecha pasada"
+    finally:
+        _cleanup(db)
+
+
+def test_hearing_transcription_dialog_saves():
+    svc, db = _make_service()
+    try:
+        case_id = svc.create_case_file(CaseFileCreate(case_number="MP-ACTA"))
+        svc.add_hearing(
+            case_id,
+            HearingScheduleCreate(scheduled_at=datetime.now() + timedelta(days=1)),
+        )
+        hearing = svc.get_case_file_by_id(case_id).hearings[0]
+        dlg = HearingTranscriptionDialog(None, _fake_app(svc), hearing)
+        dlg._editor.setPlainText("  ACTA DE PRUEBA\nlínea 2  ")
+
+        with mock.patch.object(_transcription, "show_info") as m_info, \
+                mock.patch.object(_transcription, "show_error") as m_err:
+            dlg._on_save()
+
+        assert m_info.called, "show_info debió llamarse al guardar el acta"
+        assert not m_err.called, "no debió dar error al guardar el acta"
+        saved = svc.get_case_file_by_id(case_id).hearings[0].transcription
+        assert saved == "ACTA DE PRUEBA\nlínea 2"
     finally:
         _cleanup(db)
 

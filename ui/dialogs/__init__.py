@@ -30,11 +30,13 @@ from ._person import VictimDialog, WitnessDialog, _PersonDialog
 from ._defendant import DefendantDialog
 from ._record import ActingOfficialDialog, DocumentaryDialog, ExpertDialog, _FlaggedRecordDialog
 from ._hearing import HearingDialog
+from ._transcription import HearingTranscriptionDialog
 
 __all__ = [
     "ActingOfficialDialog",
     "DefendantDialog",
     "HearingDialog",
+    "HearingTranscriptionDialog",
     "VictimDialog",
     "WitnessDialog",
     "DocumentaryDialog",

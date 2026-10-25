@@ -9,6 +9,7 @@ from datetime import datetime
 from PyQt5.QtCore import Qt, QUrl
 from PyQt5.QtGui import QBrush, QColor, QDesktopServices
 from PyQt5.QtWidgets import (
+    QFileDialog,
     QHBoxLayout,
     QMenu,
     QTableWidgetItem,
@@ -20,7 +21,13 @@ from qfluentwidgets import PushButton, SubtitleLabel, TableWidget
 
 from db import CaseFileRead
 
-from ui.dialogs import HearingDialog, confirm_delete
+from ui.dialogs import (
+    HearingDialog,
+    HearingTranscriptionDialog,
+    confirm_delete,
+    pick_save_pdf,
+)
+from ui.exporters import export_hearing_minutes_pdf, export_hearing_minutes_rtf
 from ui.shared import (
     HEARING_STATUS_LABELS,
     HEARING_TYPE_LABELS,
@@ -79,10 +86,13 @@ class _HearingsSection:
             )
             self.hearings_table.setItem(row, 4, QTableWidgetItem(h.notes or ""))
             self.hearings_table.setItem(
-                row, 5, QTableWidgetItem(h.audio_filename or "")
+                row, 5, QTableWidgetItem("Sí" if h.transcription else "—")
+            )
+            self.hearings_table.setItem(
+                row, 6, QTableWidgetItem(h.audio_filename or "")
             )
             if is_past:
-                for col in range(6):
+                for col in range(7):
                     self.hearings_table.item(row, col).setForeground(gray)
 
     def _on_add_hearing(self) -> None:
@@ -102,21 +112,76 @@ class _HearingsSection:
         if dialog.exec():
             self.load()
 
+    def _on_edit_transcription(self) -> None:
+        """Abre el editor del acta de la audiencia seleccionada."""
+        hearing_id = self._selected_hearing_id()
+        if hearing_id is None:
+            show_error(self, "Seleccione una audiencia de la tabla.")
+            return
+        hearing = next(
+            (h for h in self._case.hearings if h.id == hearing_id), None
+        )
+        if hearing is None:
+            show_error(self, "La audiencia no existe.")
+            return
+        self._open_transcription(hearing)
+
+    def _open_transcription(self, hearing) -> None:
+        dialog = HearingTranscriptionDialog(self, self.app, hearing)
+        if dialog.exec():
+            self.load()
+
     def _on_hearing_context_menu(self, pos) -> None:
-        """Menú contextual: abrir el audio asociado a la audiencia."""
+        """Menú contextual: editar el acta y abrir el audio de la audiencia."""
         row = self.hearings_table.rowAt(pos.y())
         if not (0 <= row < len(self._hearing_rows)):
             return
         hearing = next(
             (h for h in self._case.hearings if h.id == self._hearing_rows[row]), None
         )
-        if hearing is None or not hearing.audio_path:
+        if hearing is None:
             return
         menu = QMenu(self.hearings_table)
-        menu.addAction(
-            "Abrir audio", lambda: self._open_hearing_audio(hearing.audio_path)
-        )
+        menu.addAction("Editar acta", lambda: self._open_transcription(hearing))
+        if hearing.transcription:
+            menu.addAction(
+                "Exportar acta (PDF)", lambda: self._export_minutes(hearing, "pdf")
+            )
+            menu.addAction(
+                "Exportar acta (RTF)", lambda: self._export_minutes(hearing, "rtf")
+            )
+        if hearing.audio_path:
+            menu.addAction(
+                "Abrir audio", lambda: self._open_hearing_audio(hearing.audio_path)
+            )
         menu.exec_(self.hearings_table.viewport().mapToGlobal(pos))
+
+    def _export_minutes(self, hearing, kind: str) -> None:
+        """Exporta el acta de la audiencia seleccionada a PDF o RTF."""
+        if self._case is None:
+            return
+        base = f"acta_{self._case.case_number}"
+        if kind == "pdf":
+            path = pick_save_pdf(self, f"{base}.pdf")
+            if not path:
+                return
+            exporter = export_hearing_minutes_pdf
+        else:
+            path, _ = QFileDialog.getSaveFileName(
+                self, "Exportar acta RTF", f"{base}.rtf", "RTF (*.rtf)"
+            )
+            if not path:
+                return
+            if not path.lower().endswith(".rtf"):
+                path += ".rtf"
+            exporter = export_hearing_minutes_rtf
+        try:
+            exporter(self._case, hearing, path)
+        except Exception as exc:  # noqa: BLE001 - se informa al usuario
+            logger.exception("Error al exportar el acta de la audiencia %s", hearing.id)
+            show_error(self, f"Error al exportar el acta: {exc}")
+            return
+        show_info(self, "Acta exportada.")
 
     def _open_hearing_audio(self, rel_path: str) -> None:
         abs_path = self.app.service.get_audio_abs_path(rel_path)
@@ -145,10 +210,13 @@ class _HearingsSection:
         self.add_hearing_btn.clicked.connect(self._on_add_hearing)
         self.edit_hearing_btn = PushButton("Editar audiencia")
         self.edit_hearing_btn.clicked.connect(self._on_edit_hearing)
+        self.transcription_btn = PushButton("Acta")
+        self.transcription_btn.clicked.connect(self._on_edit_transcription)
         self.del_hearing_btn = PushButton("Eliminar audiencia")
         self.del_hearing_btn.clicked.connect(self._on_del_hearing)
         row.addWidget(self.add_hearing_btn)
         row.addWidget(self.edit_hearing_btn)
+        row.addWidget(self.transcription_btn)
         row.addWidget(self.del_hearing_btn)
         vbox.addLayout(row)
 
@@ -156,9 +224,9 @@ class _HearingsSection:
 
         self.hearings_table = TableWidget()
         self.hearings_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self.hearings_table.setColumnCount(6)
+        self.hearings_table.setColumnCount(7)
         self.hearings_table.setHorizontalHeaderLabels(
-            ["ID", "Fecha/Hora", "Tipo", "Estado", "Notas", "Audio"]
+            ["ID", "Fecha/Hora", "Tipo", "Estado", "Notas", "Acta", "Audio"]
         )
         self.hearings_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.hearings_table.cellDoubleClicked.connect(self._on_hearing_double)
