@@ -293,6 +293,8 @@ class HearingSchedule(Base):
     # p. ej. "Scheduled", "Completed", "Deferred", "Cancelled".
     status: Mapped[str] = mapped_column(String(50), default="Scheduled", nullable=False)
     notes: Mapped[str | None] = mapped_column(Text)
+    # Acta / transcripción de la audiencia (texto libre, tal como se redacta).
+    transcription: Mapped[str | None] = mapped_column(Text)
     # Ruta relativa (al directorio de datos de la app) del archivo de audio
     # copiado al almacén local. No se uppercacea: es una ruta de archivo.
     audio_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
