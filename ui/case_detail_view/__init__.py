@@ -159,6 +159,10 @@ class CaseDetailView(
         others_form.setSpacing(6)
         for key, label in (
             ("crime_type", "Tipo de Delito"),
+            ("drug_quantity", "Cantidad de Droga"),
+            ("drug_type", "Tipo de Droga"),
+            ("weapon_quantity", "Cantidad de Armas"),
+            ("weapon_type", "Tipo de Armas"),
             ("is_emblematic", "Emblemático"),
             ("pseudonym", "Seudónimo"),
             ("piece_count", "N.° de Piezas"),
@@ -229,6 +233,10 @@ class CaseDetailView(
             "origin_type": translate(case.origin_type, ORIGIN_TYPE_LABELS),
             "origin_location": case.origin_location,
             "crime_type": case.crime_type,
+            "drug_quantity": str(case.drug_quantity) if case.drug_quantity is not None else None,
+            "drug_type": case.drug_type,
+            "weapon_quantity": str(case.weapon_quantity) if case.weapon_quantity is not None else None,
+            "weapon_type": case.weapon_type,
             "is_emblematic": "Sí" if case.is_emblematic else "No",
             "piece_count": str(case.piece_count) if case.piece_count else None,
             "pseudonym": case.pseudonym,

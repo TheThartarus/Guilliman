@@ -125,6 +125,11 @@ def export_case_pdf(case: CaseFileRead, filepath: str) -> None:
         [_p("Defensor", _CELL_B), _p(case.defense_attorney)],
         [_p("Audiencia Actual", _CELL_B), _p(case.current_hearing_type)],
         [_p("Origen", _CELL_B), _p(translate(case.origin_type, ORIGIN_TYPE_LABELS))],
+        [_p("Tipo de Delito", _CELL_B), _p(case.crime_type)],
+        [_p("Cantidad de Droga", _CELL_B), _p(str(case.drug_quantity))],
+        [_p("Tipo de Droga", _CELL_B), _p(case.drug_type)],
+        [_p("Cantidad de Armas", _CELL_B), _p(str(case.weapon_quantity))],
+        [_p("Tipo de Armas", _CELL_B), _p(case.weapon_type)],
         [_p("Descripción del delito", _CELL_B), _p(case.offense_description)],
         [_p("Resumen de hechos", _CELL_B), _p(case.facts_summary)],
     ]
