@@ -15,6 +15,7 @@ from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtWidgets import (
     QAbstractItemView,
     QFileDialog,
+    QGridLayout,
     QHBoxLayout,
     QHeaderView,
     QTableWidgetItem,
@@ -31,6 +32,7 @@ from qfluentwidgets import (
     PrimaryPushButton,
     PushButton,
     RoundMenu,
+    SettingCardGroup,
     SubtitleLabel,
     TableWidget,
 )
@@ -85,14 +87,10 @@ class CaseSearchView(QWidget):
         layout.addWidget(SubtitleLabel("Expedientes"))
 
         # --- Panel de filtros ---
-        f_widget = QWidget()
-        f_layout = QVBoxLayout(f_widget)
-        f_layout.setSpacing(10)
-
-        # Fila 1: texto libre + estado del acusado + veredicto.
-        row1 = QHBoxLayout()
         self.query = LineEdit()
-        self.query.setPlaceholderText("Búsqueda libre (nº expediente / nomenclatura MP)")
+        self.query.setPlaceholderText(
+            "N° de expediente, MP, delito, hechos o ubicación"
+        )
         self.defendant_status = ComboBox()
         self.defendant_status.addItem("Cualquiera", userData="")
         for opt in DEFENDANT_STATUS_OPTIONS:
@@ -105,66 +103,64 @@ class CaseSearchView(QWidget):
         self.crime_type.addItem("Cualquiera", userData="")
         for opt in CRIME_TYPE_OPTIONS:
             self.crime_type.addItem(opt, userData=opt)
-        row1.addWidget(BodyLabel("Texto:"))
-        row1.addWidget(self.query, 2)
-        row1.addWidget(BodyLabel("Estado acusado:"))
-        row1.addWidget(self.defendant_status, 1)
-        row1.addWidget(BodyLabel("Veredicto:"))
-        row1.addWidget(self.verdict_status, 1)
-        row1.addWidget(BodyLabel("Tipo de Delito:"))
-        row1.addWidget(self.crime_type, 1)
-        f_layout.addLayout(row1)
 
-        # Fila 2: nombres de personas (substring, insensible a mayúsculas en db).
-        row2 = QHBoxLayout()
         self.defendant_name = LineEdit()
         self.defendant_name.setPlaceholderText("Nombre")
         self.victim_name = LineEdit()
         self.victim_name.setPlaceholderText("Nombre")
         self.witness_name = LineEdit()
         self.witness_name.setPlaceholderText("Nombre")
-        row2.addWidget(BodyLabel("Acusado:"))
-        row2.addWidget(self.defendant_name, 1)
-        row2.addWidget(BodyLabel("Víctima:"))
-        row2.addWidget(self.victim_name, 1)
-        row2.addWidget(BodyLabel("Testigo:"))
-        row2.addWidget(self.witness_name, 1)
-        f_layout.addLayout(row2)
 
-        # Fila 3: rango de fechas de acusación + procedencia.
-        row_dates = QHBoxLayout()
         self.indictment_from = LineEdit()
         self.indictment_from.setPlaceholderText("dd/mm/aaaa")
         self.indictment_to = LineEdit()
         self.indictment_to.setPlaceholderText("dd/mm/aaaa")
         self.origin_location = LineEdit()
         self.origin_location.setPlaceholderText("Procedencia")
-        row_dates.addWidget(BodyLabel("Acusación desde:"))
-        row_dates.addWidget(self.indictment_from, 1)
-        row_dates.addWidget(BodyLabel("hasta:"))
-        row_dates.addWidget(self.indictment_to, 1)
-        row_dates.addWidget(BodyLabel("Procedencia:"))
-        row_dates.addWidget(self.origin_location, 2)
-        f_layout.addLayout(row_dates)
 
-        # Fila 4: acciones.
-        row3 = QHBoxLayout()
+        filter_group = SettingCardGroup("Filtros")
+        filter_grid = QGridLayout()
+        filter_grid.setContentsMargins(0, 0, 0, 0)
+        filter_grid.setHorizontalSpacing(12)
+        filter_grid.setVerticalSpacing(10)
+        for column in range(4):
+            filter_grid.setColumnStretch(column, 1)
+        filter_grid.addWidget(self._labeled("Búsqueda libre", self.query), 0, 0, 1, 2)
+        filter_grid.addWidget(self._labeled("Tipo de Delito", self.crime_type), 0, 2)
+        filter_grid.addWidget(
+            self._labeled("Estado del acusado", self.defendant_status), 0, 3
+        )
+        filter_grid.addWidget(self._labeled("Veredicto", self.verdict_status), 1, 0)
+        filter_grid.addWidget(self._labeled("Acusado", self.defendant_name), 1, 1)
+        filter_grid.addWidget(self._labeled("Víctima", self.victim_name), 1, 2)
+        filter_grid.addWidget(self._labeled("Testigo", self.witness_name), 1, 3)
+        filter_grid.addWidget(
+            self._labeled("Acusación desde", self.indictment_from), 2, 0
+        )
+        filter_grid.addWidget(
+            self._labeled("Acusación hasta", self.indictment_to), 2, 1
+        )
+        filter_grid.addWidget(
+            self._labeled("Procedencia", self.origin_location), 2, 2, 1, 2
+        )
+
+        filter_holder = QWidget()
+        filter_holder.setLayout(filter_grid)
+        filter_group.vBoxLayout.addWidget(filter_holder)
+
+        actions = QHBoxLayout()
+        actions.setContentsMargins(0, 8, 0, 4)
+        actions.setSpacing(8)
         self.search_btn = PrimaryPushButton("Buscar")
         self.search_btn.clicked.connect(self._do_search)
         self.clear_btn = PushButton("Limpiar filtros")
         self.clear_btn.clicked.connect(self._clear_filters)
-        self.export_pdf_btn = PushButton("Exportar PDF")
-        self.export_pdf_btn.clicked.connect(self._on_export_pdf)
-        self.export_csv_btn = PushButton("Exportar CSV")
-        self.export_csv_btn.clicked.connect(self._on_export_csv)
-        row3.addWidget(self.search_btn)
-        row3.addWidget(self.clear_btn)
-        row3.addWidget(self.export_pdf_btn)
-        row3.addWidget(self.export_csv_btn)
         self.include_archived = CheckBox("Incluir archivados")
-        row3.addWidget(self.include_archived)
-        row3.addStretch(1)
-        f_layout.addLayout(row3)
+        actions.addWidget(self.search_btn)
+        actions.addWidget(self.clear_btn)
+        actions.addStretch(1)
+        actions.addWidget(self.include_archived)
+        filter_group.vBoxLayout.addLayout(actions)
 
         # Búsqueda instantánea: cualquier cambio en filtros programa la consulta.
         for field in (
@@ -181,9 +177,20 @@ class CaseSearchView(QWidget):
             combo.currentIndexChanged.connect(self._schedule_search)
         self.include_archived.stateChanged.connect(self._schedule_search)
 
-        layout.addWidget(f_widget)
+        layout.addWidget(filter_group)
 
         # --- Resultados ---
+        results_header = QHBoxLayout()
+        results_header.addWidget(SubtitleLabel("Resultados"))
+        results_header.addStretch(1)
+        self.export_pdf_btn = PushButton("Exportar PDF")
+        self.export_pdf_btn.clicked.connect(self._on_export_pdf)
+        self.export_csv_btn = PushButton("Exportar CSV")
+        self.export_csv_btn.clicked.connect(self._on_export_csv)
+        results_header.addWidget(self.export_pdf_btn)
+        results_header.addWidget(self.export_csv_btn)
+        layout.addLayout(results_header)
+
         self.table = TableWidget()
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.setBorderVisible(True)
@@ -212,6 +219,17 @@ class CaseSearchView(QWidget):
         pager.addStretch(1)
         pager.addWidget(self.status_label)
         layout.addLayout(pager)
+
+    @staticmethod
+    def _labeled(label: str, widget: QWidget) -> QWidget:
+        """Envuelve un control con su etiqueta arriba (fila de filtro)."""
+        holder = QWidget()
+        box = QVBoxLayout(holder)
+        box.setContentsMargins(0, 0, 0, 0)
+        box.setSpacing(4)
+        box.addWidget(BodyLabel(label))
+        box.addWidget(widget)
+        return holder
 
     def refresh(self) -> None:
         """Recarga la tabla con los filtros actuales (vacío = todos)."""
