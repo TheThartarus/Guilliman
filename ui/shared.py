@@ -64,6 +64,23 @@ CRIME_TYPE_OPTIONS: list[str] = [
     "Droga",
     "Armas",
 ]
+CRIME_TYPE_LABELS: dict[str, str] = {value: value for value in CRIME_TYPE_OPTIONS}
+DRUG_TYPE_LABELS: dict[str, str] = {
+    "Marihuana": "Marihuana",
+    "Cocaína": "Cocaína",
+    "Crack": "Crack",
+    "Metanfetamina": "Metanfetamina",
+    "LSD": "LSD",
+    "Heroína": "Heroína",
+}
+WEAPON_TYPE_LABELS: dict[str, str] = {
+    "Arma de Fuego": "Arma de Fuego",
+    "Arma Blanca": "Arma Blanca",
+    "Arma Contundente": "Arma Contundente",
+    "Arma Improvisada": "Arma Improvisada",
+    "Explosivo": "Explosivo",
+    "Otra": "Otra",
+}
 
 HEARING_STATUS_LABELS: dict[str, str] = {
     "Scheduled": "Programada",

@@ -28,6 +28,7 @@ APP = QApplication.instance() or QApplication([])
 from db import (
     CaseFileCreate,
     CaseFileService,
+    CrimeCreate,
     DefendantCreate,
     HearingScheduleCreate,
 )
@@ -114,6 +115,7 @@ def test_pyqt_ui_builds() -> None:
     assert shell.search_view is not None
     assert shell.new_view is not None
     assert shell.agenda_view is not None
+    assert shell.stats_view is not None
     assert shell.settings_view is not None
 
     agenda = shell.agenda_view
@@ -143,26 +145,24 @@ def test_pyqt_ui_builds() -> None:
     assert kwargs["prosecutor_name"] == "FISCALIA TEST"
     assert kwargs["anticipated_proof_date"] == date(2026, 2, 15)
 
-    # Tipo de delito "Armas": colecta condicional y persistencia.
-    combo_set_data(form._crime_type, "Armas")
-    form._weapon_quantity.setValue(3)
-    combo_set_data(form._weapon_type, "Arma de Fuego")
-    weapon_kwargs = form._collect_kwargs()
-    assert weapon_kwargs["crime_type"] == "Armas"
-    assert weapon_kwargs["weapon_quantity"] == 3
-    assert weapon_kwargs["weapon_type"] == "Arma de Fuego"
-
-    weapons_id = service.create_case_file(
-        CaseFileCreate(
-            case_number="MP-2026-ARMAS",
+    # Delito "Armas" en la lista dinámica y persistencia con crimes_list.
+    form._crimes = [
+        CrimeCreate(
             crime_type="Armas",
             weapon_quantity=3,
             weapon_type="Arma de Fuego",
         )
+    ]
+    assert form._crimes[0].crime_type == "Armas"
+
+    weapons_id = service.create_case_file(
+        CaseFileCreate(case_number="MP-2026-ARMAS"),
+        crimes_list=form._crimes,
     )
     weapons_case = service.get_case_file_by_id(weapons_id)
-    assert weapons_case.weapon_quantity == 3
-    assert weapons_case.weapon_type == "Arma de Fuego"
+    assert weapons_case.crimes[0].crime_type == "Armas"
+    assert weapons_case.crimes[0].weapon_quantity == 3
+    assert weapons_case.crimes[0].weapon_type == "Arma de Fuego"
 
     detail = case_detail_view.CaseDetailView(shell.app, case_id, on_close=lambda: None)
     detail.load()

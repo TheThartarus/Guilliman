@@ -25,7 +25,7 @@ from reportlab.platypus import (
     TableStyle,
 )
 
-from db import CaseFileRead, HearingScheduleRead, ScheduledHearingItem
+from db import CaseFileRead, HearingScheduleRead, ScheduledHearingItem, StatisticsSummary
 
 from ui.shared import (
     DEFENDANT_STATUS_LABELS,
@@ -88,6 +88,26 @@ def _p(text, style=_CELL) -> Paragraph:
     return Paragraph(_esc(text), style)
 
 
+def _crime_rows(case: CaseFileRead) -> list[tuple[str, str, str, str, str]]:
+    """Filas (tipo, droga, cantidad, arma, cantidad) para el PDF."""
+    return [
+        (
+            crime.crime_type or "—",
+            crime.drug_type or "—",
+            f"{crime.drug_quantity:g} g" if crime.drug_quantity is not None else "—",
+            crime.weapon_type or "—",
+            str(crime.weapon_quantity) if crime.weapon_quantity is not None else "—",
+        )
+        for crime in case.crimes
+    ]
+
+
+def _crime_types_text(case: CaseFileRead) -> str:
+    """Lista de tipos de delito para encabezados de acta."""
+    types = [crime.crime_type for crime in case.crimes]
+    return ", ".join(types) if types else "—"
+
+
 def _grid_style(header: bool = False) -> TableStyle:
     """Estilo base de tabla: bordes, relleno y cabecera sombreada."""
     commands = [
@@ -135,14 +155,9 @@ def export_case_pdf(case: CaseFileRead, filepath: str) -> None:
         [_p("Origen", _CELL_B), _p(translate(case.origin_type, ORIGIN_TYPE_LABELS))],
         [_p("Procedencia", _CELL_B), _p(case.origin_location)],
         [_p("Ubicación", _CELL_B), _p(case.location)],
-        [_p("Tipo de Delito", _CELL_B), _p(case.crime_type)],
         [_p("Emblemático", _CELL_B), _p("Sí" if case.is_emblematic else "No")],
         [_p("Seudónimo", _CELL_B), _p(case.pseudonym)],
         [_p("N° Piezas", _CELL_B), _p(case.piece_count)],
-        [_p("Cantidad de Droga", _CELL_B), _p(case.drug_quantity)],
-        [_p("Tipo de Droga", _CELL_B), _p(case.drug_type)],
-        [_p("Cantidad de Armas", _CELL_B), _p(case.weapon_quantity)],
-        [_p("Tipo de Armas", _CELL_B), _p(case.weapon_type)],
         [_p("Descripción del delito", _CELL_B), _p(case.offense_description)],
         [_p("Resumen de hechos", _CELL_B), _p(case.facts_summary)],
     ]
@@ -153,6 +168,32 @@ def export_case_pdf(case: CaseFileRead, filepath: str) -> None:
             style=_grid_style(),
         )
     )
+
+    crime_rows = _crime_rows(case)
+    if crime_rows:
+        story.append(Paragraph("Delitos", _HEADING))
+        header = [
+            _p("Tipo", _HEADER),
+            _p("Droga", _HEADER),
+            _p("Cantidad", _HEADER),
+            _p("Arma", _HEADER),
+            _p("Cantidad", _HEADER),
+        ]
+        rows = [header] + [[_p(value) for value in row] for row in crime_rows]
+        story.append(
+            Table(
+                rows,
+                colWidths=[
+                    _USABLE_WIDTH * 0.24,
+                    _USABLE_WIDTH * 0.20,
+                    _USABLE_WIDTH * 0.16,
+                    _USABLE_WIDTH * 0.24,
+                    _USABLE_WIDTH * 0.16,
+                ],
+                style=_grid_style(header=True),
+                repeatRows=1,
+            )
+        )
 
     # --- Fechas ---
     story.append(Paragraph("Fechas", _HEADING))
@@ -513,7 +554,7 @@ def export_hearing_minutes_rtf(
         ("MP", case.prosecutor_file_number),
         ("Fiscal", case.prosecutor_name),
         ("Defensor", case.defense_attorney),
-        ("Tipo de delito", case.crime_type),
+        ("Tipo de delito", _crime_types_text(case)),
         ("Fecha y hora", format_datetime(hearing.scheduled_at)),
         ("Tipo de audiencia", translate(hearing.hearing_type, HEARING_TYPE_LABELS)),
         ("Estado", translate(hearing.status, HEARING_STATUS_LABELS)),
@@ -560,7 +601,7 @@ def export_hearing_minutes_pdf(
         [_p("MP", _CELL_B), _p(case.prosecutor_file_number)],
         [_p("Fiscal", _CELL_B), _p(case.prosecutor_name)],
         [_p("Defensor", _CELL_B), _p(case.defense_attorney)],
-        [_p("Tipo de delito", _CELL_B), _p(case.crime_type)],
+        [_p("Tipo de delito", _CELL_B), _p(_crime_types_text(case))],
         [_p("Fecha y hora", _CELL_B), _p(format_datetime(hearing.scheduled_at))],
         [_p("Tipo de audiencia", _CELL_B),
          _p(translate(hearing.hearing_type, HEARING_TYPE_LABELS))],
@@ -826,3 +867,75 @@ def export_cases_csv(cases: list[CaseFileRead], filepath: str) -> None:
                     format_date(c.indictment_date),
                 ]
             )
+
+
+# --------------------------------------------------------------------------- #
+# Estadísticas y reportes
+# --------------------------------------------------------------------------- #
+def export_statistics_csv(summary: StatisticsSummary, filepath: str) -> None:
+    """Genera un CSV con las secciones del resumen estadístico."""
+    with open(filepath, "w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(["seccion", "etiqueta", "cantidad"])
+        writer.writerow(["resumen", "total_expedientes", summary.total_cases])
+        writer.writerow(["resumen", "activos", summary.active_cases])
+        writer.writerow(["resumen", "archivados", summary.archived_cases])
+        for item in summary.cases_by_crime_type:
+            writer.writerow(["delito", item.label, item.count])
+        for item in summary.cases_by_prosecutor:
+            writer.writerow(["fiscalia", item.label, item.count])
+        for item in summary.hearings_by_month:
+            writer.writerow(["audiencias_mes", item.label, item.count])
+
+
+def export_statistics_pdf(summary: StatisticsSummary, filepath: str) -> None:
+    """Genera el PDF del resumen estadístico."""
+    story = []
+    story.append(Paragraph("Guilliman - Estadísticas", _TITLE))
+    story.append(Spacer(1, 6))
+
+    summary_rows = [
+        [_p("Total de expedientes", _CELL_B), _p(summary.total_cases)],
+        [_p("Activos", _CELL_B), _p(summary.active_cases)],
+        [_p("Archivados", _CELL_B), _p(summary.archived_cases)],
+    ]
+    story.append(
+        Table(
+            summary_rows,
+            colWidths=[_USABLE_WIDTH * 0.40, _USABLE_WIDTH * 0.60],
+            style=_grid_style(),
+        )
+    )
+
+    sections = [
+        ("Expedientes por tipo de delito", summary.cases_by_crime_type),
+        ("Expedientes por fiscalía (top 10)", summary.cases_by_prosecutor),
+        ("Audiencias por mes (últimos 12)", summary.hearings_by_month),
+    ]
+    for title, items in sections:
+        story.append(Paragraph(title, _HEADING))
+        rows = [[_p("Categoría", _HEADER), _p("Cantidad", _HEADER)]]
+        for item in items:
+            rows.append([_p(item.label), _p(item.count)])
+        if len(rows) == 1:
+            rows.append([_p("Sin datos"), _p("—")])
+        story.append(
+            Table(
+                rows,
+                colWidths=[_USABLE_WIDTH * 0.75, _USABLE_WIDTH * 0.25],
+                style=_grid_style(header=True),
+                repeatRows=1,
+            )
+        )
+        story.append(Spacer(1, 6))
+
+    doc = SimpleDocTemplate(
+        filepath,
+        pagesize=_PAGE,
+        leftMargin=15 * mm,
+        rightMargin=15 * mm,
+        topMargin=15 * mm,
+        bottomMargin=15 * mm,
+        title="Guilliman - Estadísticas",
+    )
+    doc.build(story)

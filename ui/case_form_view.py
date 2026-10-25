@@ -11,17 +11,18 @@ from __future__ import annotations
 import logging
 
 from PyQt5.QtWidgets import (
-    QDoubleSpinBox,
+    QAbstractItemView,
     QHBoxLayout,
+    QHeaderView,
     QScrollArea,
     QSpinBox,
+    QTableWidgetItem,
     QVBoxLayout,
     QWidget,
 )
 from PyQt5.QtCore import Qt
 
 from qfluentwidgets import (
-    BodyLabel,
     ComboBox,
     FluentIcon,
     LineEdit,
@@ -29,9 +30,9 @@ from qfluentwidgets import (
     PushButton,
     SettingCard,
     SettingCardGroup,
-    StrongBodyLabel,
     SubtitleLabel,
     SwitchButton,
+    TableWidget,
     TextEdit,
 )
 
@@ -39,16 +40,18 @@ from db import (
     CaseFileCreate,
     CaseFileRead,
     CaseFileUpdate,
-    CrimeTypeValue,
-    DrugTypeValue,
+    CrimeCreate,
     DuplicateCaseNumberError,
-    WeaponTypeValue,
 )
 from pydantic import ValidationError
 
+from ui.dialogs import CrimeDialog
 from ui.dialogs._cards import _DateCard
 from ui.shared import (
+    CRIME_TYPE_LABELS,
+    DRUG_TYPE_LABELS,
     ORIGIN_TYPE_LABELS,
+    WEAPON_TYPE_LABELS,
     field_errors,
 )
 from ui.settings import load_theme_mode
@@ -113,35 +116,6 @@ _LIGHT_SPINBOX_SS = (
 )
 
 logger = logging.getLogger("guilliman")
-
-# --------------------------------------------------------------------------- #
-# Etiquetas de dominio para los combos de clasificación de delitos.
-# --------------------------------------------------------------------------- #
-CRIME_TYPE_LABELS: dict[CrimeTypeValue, str] = {
-    "Ordinario": "Ordinario",
-    "Violencia": "Violencia",
-    "Droga": "Droga",
-    "Armas": "Armas",
-}
-
-DRUG_TYPE_LABELS: dict[DrugTypeValue, str] = {
-    "Marihuana": "Marihuana",
-    "Cocaína": "Cocaína",
-    "Crack": "Crack",
-    "Metanfetamina": "Metanfetamina",
-    "LSD": "LSD",
-    "Heroína": "Heroína",
-}
-
-WEAPON_TYPE_LABELS: dict[WeaponTypeValue, str] = {
-    "Arma de Fuego": "Arma de Fuego",
-    "Arma Blanca": "Arma Blanca",
-    "Arma Contundente": "Arma Contundente",
-    "Arma Improvisada": "Arma Improvisada",
-    "Explosivo": "Explosivo",
-    "Otra": "Otra",
-}
-
 
 class _LineEditCard(SettingCard):
     """Campo de texto libre presentado como tarjeta Fluent (estilo coherente con _DateCard)."""
@@ -210,35 +184,6 @@ class _SpinBoxCard(SettingCard):
         self._spin.setValue(val)
 
 
-class _DoubleSpinBoxCard(SettingCard):
-    """Campo numérico decimal presentado como tarjeta Fluent."""
-
-    def __init__(self, title: str, suffix: str = "", decimals: int = 2,
-                 parent: QWidget | None = None) -> None:
-        super().__init__(FluentIcon.INFO, title, parent=parent)
-        self.titleLabel.setMinimumWidth(200)
-        self._spin = QDoubleSpinBox()
-        self._spin.setRange(0.0, 999999.99)
-        self._spin.setDecimals(decimals)
-        self._spin.setSpecialValueText("—")
-        if suffix:
-            self._spin.setSuffix(suffix)
-        self.hBoxLayout.takeAt(self.hBoxLayout.count() - 1)
-        self.hBoxLayout.addWidget(self._spin, 1)
-        self.hBoxLayout.addSpacing(16)
-
-    def showEvent(self, event) -> None:
-        super().showEvent(event)
-        ss = _DARK_SPINBOX_SS if load_theme_mode() == "DARK" else _LIGHT_SPINBOX_SS
-        self._spin.setStyleSheet(ss)
-
-    def value(self) -> float:
-        return self._spin.value()
-
-    def setValue(self, val: float) -> None:
-        self._spin.setValue(val)
-
-
 class _ComboBoxCard(SettingCard):
     """ComboBox presentado como tarjeta Fluent."""
 
@@ -275,13 +220,6 @@ class CaseFormView(QWidget):
     # ------------------------------------------------------------------ #
     # Campos
     # ------------------------------------------------------------------ #
-    def _text(self, key: str, placeholder: str = "", kind: str = "text") -> LineEdit:
-        field = LineEdit()
-        field.setPlaceholderText(placeholder)
-        restrict_input(field, kind)
-        self._fields[key] = field
-        return field
-
     def _build_fields(self) -> None:
         self._fields: dict = {}
 
@@ -356,38 +294,29 @@ class CaseFormView(QWidget):
         self._pseudonym = self._pseudonym_card._edit
         self._fields["pseudonym"] = self._pseudonym_card
 
-        self._crime_type_card = _ComboBoxCard("Tipo de Delito", parent=self)
-        self._crime_type = self._crime_type_card.combo
-        for value, label in CRIME_TYPE_LABELS.items():
-            self._crime_type.addItem(label, userData=value)
-        combo_set_data(self._crime_type, "Ordinario")
-        self._fields["crime_type"] = self._crime_type_card
+        # -- Delitos imputados (lista dinámica; se edita con CrimeDialog) --
+        self._crimes: list[CrimeCreate] = []
+        self._crimes_table = TableWidget()
+        self._crimes_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self._crimes_table.setColumnCount(2)
+        self._crimes_table.setHorizontalHeaderLabels(["Tipo", "Detalle"])
+        self._crimes_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self._crimes_table.setMinimumHeight(120)
+        self._crimes_table.cellDoubleClicked.connect(lambda *_: self._on_edit_crime())
 
-        # -- Sección Droga (oculta por defecto, se muestra si crime_type == "Droga") --
-        self._drug_quantity_card = _DoubleSpinBoxCard("Cantidad de Droga", " g", parent=self)
-        self._drug_quantity = self._drug_quantity_card
-        self._fields["drug_quantity"] = self._drug_quantity_card
-
-        self._drug_type_card = _ComboBoxCard("Tipo de Droga", parent=self)
-        self._drug_type = self._drug_type_card.combo
-        for value, label in DRUG_TYPE_LABELS.items():
-            self._drug_type.addItem(label, userData=value)
-        self._fields["drug_type"] = self._drug_type_card
-
-        # -- Sección Armas (oculta por defecto, se muestra si crime_type == "Armas") --
-        self._weapon_quantity_card = _SpinBoxCard("Cantidad de Armas", " armas", parent=self)
-        self._weapon_quantity = self._weapon_quantity_card
-        self._fields["weapon_quantity"] = self._weapon_quantity_card
-
-        self._weapon_type_card = _ComboBoxCard("Tipo de Armas", parent=self)
-        self._weapon_type = self._weapon_type_card.combo
-        for value, label in WEAPON_TYPE_LABELS.items():
-            self._weapon_type.addItem(label, userData=value)
-        self._fields["weapon_type"] = self._weapon_type_card
-
-        # Visibilidad condicional de las secciones Droga/Armas (conectada en _build_layout).
-        self._crime_type.currentIndexChanged.connect(self._update_drug_visibility)
-        self._crime_type.currentIndexChanged.connect(self._update_weapon_visibility)
+        self._crimes_buttons = QWidget()
+        crimes_row = QHBoxLayout(self._crimes_buttons)
+        crimes_row.setContentsMargins(0, 0, 0, 0)
+        self.add_crime_btn = PushButton("Agregar delito")
+        self.add_crime_btn.clicked.connect(self._on_add_crime)
+        self.edit_crime_btn = PushButton("Editar delito")
+        self.edit_crime_btn.clicked.connect(self._on_edit_crime)
+        self.del_crime_btn = PushButton("Eliminar delito")
+        self.del_crime_btn.clicked.connect(self._on_del_crime)
+        crimes_row.addWidget(self.add_crime_btn)
+        crimes_row.addWidget(self.edit_crime_btn)
+        crimes_row.addWidget(self.del_crime_btn)
+        crimes_row.addStretch(1)
 
         self._location_card = _LineEditCard("Ubicación", "address", parent=self)
         self._location = self._location_card._edit
@@ -443,25 +372,16 @@ class CaseFormView(QWidget):
         layout.addWidget(self._section("Resumen", [
             self._facts_summary,
         ]))
+        layout.addWidget(self._section("Delitos", [
+            self._crimes_buttons,
+            self._crimes_table,
+        ]))
         layout.addWidget(self._section("Otros", [
-            self._crime_type_card,
             self._is_emblematic_card,
             self._pseudonym_card,
             self._piece_count,
             self._location_card,
         ]))
-        self._drug_section = self._section("Droga", [
-            self._drug_quantity_card,
-            self._drug_type_card,
-        ])
-        layout.addWidget(self._drug_section)
-        self._weapon_section = self._section("Armas", [
-            self._weapon_quantity_card,
-            self._weapon_type_card,
-        ])
-        layout.addWidget(self._weapon_section)
-        self._update_drug_visibility()
-        self._update_weapon_visibility()
         layout.addStretch(1)
 
         scroll.setWidget(content)
@@ -485,28 +405,59 @@ class CaseFormView(QWidget):
                 group.vBoxLayout.addWidget(w)
         return group
 
+
+    def _fill_crimes_table(self) -> None:
+        self._crimes_table.setRowCount(len(self._crimes))
+        for row, crime in enumerate(self._crimes):
+            self._crimes_table.setItem(
+                row, 0, QTableWidgetItem(CRIME_TYPE_LABELS.get(crime.crime_type, crime.crime_type))
+            )
+            self._crimes_table.setItem(
+                row, 1, QTableWidgetItem(self._crime_detail(crime))
+            )
+
     @staticmethod
-    def _pair(left: QWidget, right: QWidget | None = None) -> QHBoxLayout:
-        row = QHBoxLayout()
-        row.addWidget(left, 1)
-        row.addWidget(right if right is not None else QWidget(), 1)
-        return row
+    def _crime_detail(crime: CrimeCreate) -> str:
+        parts: list[str] = []
+        if crime.drug_quantity is not None or crime.drug_type:
+            detail = DRUG_TYPE_LABELS.get(crime.drug_type, crime.drug_type) if crime.drug_type else "Droga"
+            if crime.drug_quantity is not None:
+                detail += f" — {crime.drug_quantity:g} g"
+            parts.append(detail)
+        if crime.weapon_quantity is not None or crime.weapon_type:
+            detail = WEAPON_TYPE_LABELS.get(crime.weapon_type, crime.weapon_type) if crime.weapon_type else "Arma"
+            if crime.weapon_quantity is not None:
+                detail += f" — {crime.weapon_quantity} armas"
+            parts.append(detail)
+        return " | ".join(parts) if parts else "—"
 
-    def _update_drug_visibility(self) -> None:
-        """Muestra u oculta la sección 'Droga' según el tipo de delito seleccionado."""
-        is_drug = combo_current_data(self._crime_type) == "Droga"
-        self._drug_section.setVisible(is_drug)
-        if not is_drug:
-            self._drug_quantity.setValue(0.0)
-            self._drug_type.setCurrentIndex(-1)
+    def _selected_crime_index(self) -> int | None:
+        row = self._crimes_table.currentRow()
+        return row if 0 <= row < len(self._crimes) else None
 
-    def _update_weapon_visibility(self) -> None:
-        """Muestra u oculta la sección 'Armas' según el tipo de delito seleccionado."""
-        is_weapons = combo_current_data(self._crime_type) == "Armas"
-        self._weapon_section.setVisible(is_weapons)
-        if not is_weapons:
-            self._weapon_quantity.setValue(0)
-            self._weapon_type.setCurrentIndex(-1)
+    def _on_add_crime(self) -> None:
+        dialog = CrimeDialog(self)
+        if dialog.exec() and dialog.result_crime is not None:
+            self._crimes.append(dialog.result_crime)
+            self._fill_crimes_table()
+
+    def _on_edit_crime(self) -> None:
+        index = self._selected_crime_index()
+        if index is None:
+            show_error(self, "Seleccione un delito de la tabla.")
+            return
+        dialog = CrimeDialog(self, self._crimes[index])
+        if dialog.exec() and dialog.result_crime is not None:
+            self._crimes[index] = dialog.result_crime
+            self._fill_crimes_table()
+
+    def _on_del_crime(self) -> None:
+        index = self._selected_crime_index()
+        if index is None:
+            show_error(self, "Seleccione un delito de la tabla.")
+            return
+        del self._crimes[index]
+        self._fill_crimes_table()
 
     # ------------------------------------------------------------------ #
     # Carga en edición
@@ -543,17 +494,18 @@ class CaseFormView(QWidget):
         self._facts_summary.setPlainText(case.facts_summary or "")
         self._is_emblematic.set(case.is_emblematic)
         self._pseudonym.setText(case.pseudonym or "")
-        if case.crime_type:
-            combo_set_data(self._crime_type, case.crime_type)
         self._piece_count.setValue(case.piece_count or 0)
-        if case.drug_quantity is not None:
-            self._drug_quantity.setValue(case.drug_quantity)
-        if case.drug_type:
-            combo_set_data(self._drug_type, case.drug_type)
-        if case.weapon_quantity is not None:
-            self._weapon_quantity.setValue(case.weapon_quantity)
-        if case.weapon_type:
-            combo_set_data(self._weapon_type, case.weapon_type)
+        self._crimes = [
+            CrimeCreate(
+                crime_type=crime.crime_type,
+                drug_quantity=crime.drug_quantity,
+                drug_type=crime.drug_type,
+                weapon_quantity=crime.weapon_quantity,
+                weapon_type=crime.weapon_type,
+            )
+            for crime in case.crimes
+        ]
+        self._fill_crimes_table()
         self._location.setText(case.location or "")
 
     def reset(self) -> None:
@@ -577,12 +529,9 @@ class CaseFormView(QWidget):
         self._facts_summary.clear()
         self._is_emblematic.set(False)
         self._pseudonym.clear()
-        combo_set_data(self._crime_type, "Ordinario")
         self._piece_count.setValue(0)
-        self._drug_quantity.setValue(0.0)
-        self._drug_type.setCurrentIndex(-1)
-        self._weapon_quantity.setValue(0)
-        self._weapon_type.setCurrentIndex(-1)
+        self._crimes = []
+        self._fill_crimes_table()
         self._location.clear()
 
     # ------------------------------------------------------------------ #
@@ -594,14 +543,7 @@ class CaseFormView(QWidget):
         return value if value else None
 
     def _collect_kwargs(self) -> dict:
-        crime_type = combo_current_data(self._crime_type)
-        is_drug = crime_type == "Droga"
-        is_weapons = crime_type == "Armas"
         piece_count = self._piece_count.value()
-        drug_qty = self._drug_quantity.value() if is_drug else None
-        drug_type = combo_current_data(self._drug_type) if is_drug else None
-        weapon_qty = self._weapon_quantity.value() if is_weapons else None
-        weapon_type = combo_current_data(self._weapon_type) if is_weapons else None
 
         return {
             "case_number": (self._case_number.text() or "").strip().upper(),
@@ -624,12 +566,7 @@ class CaseFormView(QWidget):
             "location": self._clean(self._location.text()),
             "is_emblematic": self._is_emblematic.get(),
             "pseudonym": self._clean(self._pseudonym.text()),
-            "crime_type": crime_type,
             "piece_count": piece_count if piece_count > 0 else None,
-            "drug_quantity": drug_qty,
-            "drug_type": drug_type,
-            "weapon_quantity": weapon_qty if weapon_qty and weapon_qty > 0 else None,
-            "weapon_type": weapon_type,
         }
 
     def _mark_errors(self, errors: dict[str, str]) -> None:
@@ -646,7 +583,9 @@ class CaseFormView(QWidget):
         kwargs = self._collect_kwargs()
         try:
             if self.case_file_id is None:
-                new_id = self.app.service.create_case_file(CaseFileCreate(**kwargs))
+                new_id = self.app.service.create_case_file(
+                    CaseFileCreate(**kwargs), crimes_list=self._crimes
+                )
                 show_info(self, f"Expediente creado (ID {new_id}).")
                 saved_id = new_id
             else:
@@ -655,6 +594,11 @@ class CaseFormView(QWidget):
                 )
                 if not updated:
                     show_error(self, "El expediente no existe o fue eliminado.")
+                    return
+                if not self.app.service.set_case_crimes(
+                    self.case_file_id, self._crimes
+                ):
+                    show_error(self, "No se pudieron guardar los delitos.")
                     return
                 show_info(self, "Expediente actualizado.")
                 saved_id = self.case_file_id

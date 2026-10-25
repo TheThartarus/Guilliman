@@ -26,6 +26,7 @@ from ui.case_detail_view import CaseDetailView
 from ui.case_form_view import CaseFormView
 from ui.case_search_view import CaseSearchView
 from ui.dashboard_view import DashboardView
+from ui.stats_view import StatisticsView
 from ui.widgets import show_error, show_info
 
 
@@ -213,6 +214,7 @@ class SettingsView(QWidget):
             self.app.shell.dashboard_view.refresh()
             self.app.shell.search_view.refresh()
             self.app.shell.agenda_view.refresh()
+            self.app.shell.stats_view.refresh()
         show_info(self, "Datos restaurados.")
 
 
@@ -233,6 +235,7 @@ class AppShell(FluentWindow):
         self.search_view = CaseSearchView(self.app)
         self.new_view = CaseFormView(self.app, None)
         self.agenda_view = AgendaView(self.app)
+        self.stats_view = StatisticsView(self.app)
         self.settings_view = SettingsView(self.app)
         self.about_view = AboutView()
 
@@ -240,6 +243,7 @@ class AppShell(FluentWindow):
         self.search_view.setObjectName("search")
         self.new_view.setObjectName("new")
         self.agenda_view.setObjectName("agenda")
+        self.stats_view.setObjectName("stats")
         self.settings_view.setObjectName("settings")
         self.about_view.setObjectName("about")
 
@@ -247,6 +251,7 @@ class AppShell(FluentWindow):
         self.addSubInterface(self.search_view, FluentIcon.SEARCH, "Expedientes", NavigationItemPosition.TOP)
         self.addSubInterface(self.new_view, FluentIcon.ADD, "Nuevo", NavigationItemPosition.TOP)
         self.addSubInterface(self.agenda_view, FluentIcon.CALENDAR, "Agenda", NavigationItemPosition.TOP)
+        self.addSubInterface(self.stats_view, FluentIcon.PIE_SINGLE, "Estadísticas", NavigationItemPosition.TOP)
         self.addSubInterface(self.about_view, FluentIcon.INFO, "Acerca de", NavigationItemPosition.BOTTOM)
         self.addSubInterface(self.settings_view, FluentIcon.SETTING, "Ajustes", NavigationItemPosition.BOTTOM)
 

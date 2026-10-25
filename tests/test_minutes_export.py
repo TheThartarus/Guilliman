@@ -9,6 +9,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from db import (  # noqa: E402
     CaseFileCreate,
     CaseFileService,
+    CrimeCreate,
     DefendantCreate,
     HearingScheduleCreate,
     HearingScheduleUpdate,
@@ -33,8 +34,8 @@ def test_minutes_export_rtf_and_pdf(tmp_path, monkeypatch) -> None:
             CaseFileCreate(
                 case_number="ACTA-1",
                 prosecutor_name="Fiscal",
-                crime_type="Armas",
             ),
+            crimes_list=[CrimeCreate(crime_type="Armas")],
             defendants_list=[
                 DefendantCreate(full_name="Juan Perez", national_id="1-1")
             ],

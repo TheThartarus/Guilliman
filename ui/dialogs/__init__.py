@@ -32,9 +32,11 @@ from ._record import ActingOfficialDialog, DocumentaryDialog, ExpertDialog, _Fla
 from ._hearing import HearingDialog
 from ._transcription import HearingTranscriptionDialog
 from ._detention import DetentionAlertsDialog
+from ._crime import CrimeDialog
 
 __all__ = [
     "ActingOfficialDialog",
+    "CrimeDialog",
     "DefendantDialog",
     "DetentionAlertsDialog",
     "HearingDialog",

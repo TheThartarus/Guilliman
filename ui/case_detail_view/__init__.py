@@ -50,6 +50,7 @@ from ui.widgets import show_error, show_info
 
 from ._acting_officials import _ActingOfficialsSection
 from ._attachments import _AttachmentsSection
+from ._crimes import _CrimesSection
 from ._defendants import _DefendantsSection
 from ._documentaries import _DocumentariesSection
 from ._experts import _ExpertsSection
@@ -66,6 +67,7 @@ class CaseDetailView(
     _WitnessesSection,
     _DocumentariesSection,
     _AttachmentsSection,
+    _CrimesSection,
     _ExpertsSection,
     _ActingOfficialsSection,
     _HearingsSection,
@@ -161,11 +163,6 @@ class CaseDetailView(
         others_form = QFormLayout()
         others_form.setSpacing(6)
         for key, label in (
-            ("crime_type", "Tipo de Delito"),
-            ("drug_quantity", "Cantidad de Droga"),
-            ("drug_type", "Tipo de Droga"),
-            ("weapon_quantity", "Cantidad de Armas"),
-            ("weapon_type", "Tipo de Armas"),
             ("is_emblematic", "Emblemático"),
             ("pseudonym", "Seudónimo"),
             ("piece_count", "N.° de Piezas"),
@@ -192,6 +189,7 @@ class CaseDetailView(
         others_holder.setLayout(others_form)
         others_group.vBoxLayout.addWidget(others_holder)
         layout.addWidget(others_group)
+        layout.addWidget(self._build_crimes_section())
 
         # Secciones de entidades — cada mixin construye su propia UI.
         layout.addWidget(self._build_defendants_section())
@@ -239,11 +237,6 @@ class CaseDetailView(
             "current_hearing_type": case.current_hearing_type,
             "origin_type": translate(case.origin_type, ORIGIN_TYPE_LABELS),
             "origin_location": case.origin_location,
-            "crime_type": case.crime_type,
-            "drug_quantity": str(case.drug_quantity) if case.drug_quantity is not None else None,
-            "drug_type": case.drug_type,
-            "weapon_quantity": str(case.weapon_quantity) if case.weapon_quantity is not None else None,
-            "weapon_type": case.weapon_type,
             "is_emblematic": "Sí" if case.is_emblematic else "No",
             "piece_count": str(case.piece_count) if case.piece_count else None,
             "pseudonym": case.pseudonym,
@@ -272,6 +265,7 @@ class CaseDetailView(
         self._fill_victims(case)
         self._fill_witnesses(case)
         self._fill_documentaries(case)
+        self._fill_crimes(case)
         self._fill_attachments(case)
         self._fill_experts(case)
         self._fill_acting_officials(case)
