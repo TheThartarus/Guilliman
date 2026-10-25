@@ -10,20 +10,25 @@ Desktop UI: PyQt5 + qfluentwidgets (FluentWindow). Windows-only, 32-bit target.
 
 ## Structure (`ui/`)
 - `app_shell.py` — `AppShell(FluentWindow)` + `GuillimanApp` (shared state: `service` + `shell`)
-  + `SettingsView` (theme combo + "Respaldar datos (BD + audios)" / "Restaurar datos",
-  both operating on a `.zip` via `service.backup_data()` / `service.restore_data()`).
+  + `SettingsView` (theme combo + "Respaldar datos..." / "Respaldo rápido" (rotating,
+  default folder) / "Restaurar datos" / "Verificar audios"). Backups go through
+  `service.backup_data()` / `service.restore_data()`; `ui.settings.save_last_backup_at`
+  records the timestamp.
 - `dashboard_view.py` — "Inicio": stat cards (cases, upcoming 7 days, hearings missing
-  audio/acta) and a table of the next 7 days. Default view at startup.
+  audio/acta), last-backup age line, and a table of the next 7 days. Default view.
 - `case_search_view.py` — search / list of case files; filters run automatically with a
   300 ms debounce (`_schedule_search`). Results are sortable; row→case mapping uses
   `Qt.UserRole` on the ID item (`_case_id_at`), so sorting never desaligns actions.
+  A "Incluir archivados" checkbox exposes archived rows; the context menu offers
+  Archivar (active) or Restaurar / Eliminar definitivamente (archived).
 - `case_form_view.py` — create / edit form for a case file and its child entities.
 - `case_detail_view/` — read-only detail of a case file (package, not single file).
   Split into mixins per entity: `_defendants.py`, `_victims.py`, `_witnesses.py`,
   `_documentaries.py`, `_experts.py`, `_hearings.py`. All combined in
   `CaseDetailView` via multiple inheritance. `_hearings.py` shows "Acta" and "Audio"
   columns, an "Acta" button, and a context menu with edit acta, export acta (PDF/RTF)
-  and open audio (resolved via `service.get_audio_abs_path`).
+  and open audio (resolved via `service.get_audio_abs_path`). The header has an
+  Archivar/Restaurar button; editing is disabled for archived cases.
 - `agenda_view.py` — calendar / agenda of scheduled hearings; exports PDF and iCalendar
   (`.ics`).
 - `settings.py` — theme persistence (light / dark) to `settings.json`.

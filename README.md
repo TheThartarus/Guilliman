@@ -15,6 +15,8 @@ Aplicación de escritorio nativa para Windows diseñada para la gestión integra
 - **Panel de inicio** — Contadores de expedientes, audiencias próximas (7 días) y
   audiencias pendientes de audio o acta; tabla de las próximas audiencias.
 - **Gestión de expedientes** — Número de expediente único, fiscalía, fiscal, defensa, agencia aprehendadora, descripción del hecho, resumen, tipo de origen, estado de fallo y fechas procesales.
+- **Archivado y restauración** — Los expedientes se archivan (no se borran) y pueden
+  restaurarse; el borrado definitivo queda como acción explícita sobre un archivado.
 - **Partes por expediente** (borrado en cascada al eliminar el expediente):
   - **Acusados** — Nombre, cédula, fecha de aprehensión, fecha de audiencia, dirección, teléfono y notas.
   - **Víctimas y testigos** — Nombre, cédula, dirección, teléfono y notas.
@@ -34,6 +36,9 @@ Aplicación de escritorio nativa para Windows diseñada para la gestión integra
 - **Búsqueda de expedientes** — Por número, fiscalía u otros criterios.
 - **Exportación a PDF** — Del expediente individual y de la agenda completa (reportlab).
 - **Respaldo completo** — Un solo `.zip` con la base de datos y todos los audios (Ajustes).
+  El "Respaldo rápido" rota automáticamente y conserva los últimos 10.
+- **Verificación de audios** — Detecta audios referenciados que faltan en disco o que
+  apuntan fuera del almacén local (Ajustes → "Verificar audios").
 - **Tema claro / oscuro** — Persistente entre sesiones (sección Ajustes).
 - **Normalización automática** — Campos de entrada en MAYÚSCULAS.
 
@@ -142,9 +147,16 @@ el archivo correspondiente se elimina del store.
 
 ### Respaldo
 
-En **Ajustes → Respaldar datos (BD + audios)** se genera un único archivo `.zip` con la
-base de datos y toda la carpeta `audios/`. **Restaurar datos** reemplaza ambos; antes de
+En **Ajustes → Respaldar datos...** se genera un único archivo `.zip` con la base de
+datos y toda la carpeta `audios/`. **Restaurar datos** reemplaza ambos; antes de
 restaurar, la app crea automáticamente un respaldo de seguridad.
+
+**Respaldo rápido** guarda en `<data_dir>/backups/` y rota, conservando los últimos 10
+respaldos. El panel de inicio muestra la antigüedad del último respaldo y avisa cuando
+conviene hacer uno nuevo.
+
+**Verificar audios** recorre las audiencias y reporta archivos faltantes o rutas fuera
+del almacén local.
 
 ---
 

@@ -68,7 +68,13 @@ Compact guidance for agents working in this repo. Signals only.
   `restore_data()`, which zip the `.db` **and** `audios/` together. `backup_db()` /
   `restore_db()` remain DB-only (legacy). `restore_data()` validates the zip (rejects
   zip-slip) and replaces both the DB and the whole `audios/` folder; Settings calls
-  `backup_data()` first as a safety net before restoring.
+  `backup_data()` first as a safety net before restoring. "Respaldo rápido" uses the
+  default `<data_dir>/backups/` destination and rotates, keeping the newest `keep`
+  (default 10). `ui.settings` records `last_backup_at` for the dashboard reminder.
+- **Archiving**: `archive_case_file()` sets `CaseFile.archived_at` (soft delete);
+  searches and counters exclude archived rows unless `include_archived=True`.
+  `delete_case_file()` remains the hard delete (cascades and deletes audio files) and
+  the UI only offers it for already-archived cases.
 - Input convention: text fields are uppercased on collection
   (`ui/shared.make_uppercase`, `combo_set_data`). Tests assert uppercase output
   (e.g. `form._collect_kwargs()` returns `"FISCALIA TEST"`); preserve this behavior.
