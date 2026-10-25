@@ -52,6 +52,7 @@ class CaseFileMethods(_ServiceMixin):
         defendant_status: str | None = None,
         verdict_status: str | None = None,
         crime_type: str | None = None,
+        origin_location: str | None = None,
         indictment_date_from: date | None = None,
         indictment_date_to: date | None = None,
         hearing_from: datetime | None = None,
@@ -75,6 +76,9 @@ class CaseFileMethods(_ServiceMixin):
             statement = statement.where(
                 (CaseFile.case_number.ilike(pattern))
                 | (CaseFile.prosecutor_file_number.ilike(pattern))
+                | (CaseFile.offense_description.ilike(pattern))
+                | (CaseFile.facts_summary.ilike(pattern))
+                | (CaseFile.location.ilike(pattern))
             )
         if defendant_status is not None:
             sub = select(Defendant.case_file_id).where(Defendant.status == defendant_status)
@@ -84,6 +88,10 @@ class CaseFileMethods(_ServiceMixin):
             statement = statement.where(CaseFile.id.in_(sub))
         if crime_type is not None:
             statement = statement.where(CaseFile.crime_type == crime_type)
+        if origin_location:
+            statement = statement.where(
+                CaseFile.origin_location.ilike(f"%{origin_location.strip()}%")
+            )
         if indictment_date_from is not None:
             statement = statement.where(CaseFile.indictment_date >= indictment_date_from)
         if indictment_date_to is not None:
@@ -126,6 +134,7 @@ class CaseFileMethods(_ServiceMixin):
         defendant_status: str | None = None,
         verdict_status: str | None = None,
         crime_type: str | None = None,
+        origin_location: str | None = None,
         indictment_date_from: date | None = None,
         indictment_date_to: date | None = None,
         hearing_from: datetime | None = None,
@@ -135,13 +144,15 @@ class CaseFileMethods(_ServiceMixin):
         """Busca expedientes con filtros combinables (AND).
 
         Filtros:
-            - ``query``: texto libre sobre número de expediente O nomenclatura
-              del MP (``""`` retorna todos los que cumplan el resto).
+            - ``query``: texto libre sobre número de expediente, nomenclatura
+              del MP, descripción del delito, resumen de hechos o ubicación
+              (``""`` retorna todos los que cumplan el resto).
             - ``defendant_name`` / ``victim_name`` / ``witness_name``: substring
               (LIKE) insensible a mayúsculas sobre el nombre de la persona.
             - ``defendant_status`` / ``verdict_status``: coincidencia exacta.
             - ``crime_type``: coincidencia exacta sobre el tipo de delito
               (``Ordinario``, ``Violencia``, ``Droga``, ``Armas``).
+            - ``origin_location``: substring sobre la procedencia del expediente.
             - ``indictment_date_from`` / ``indictment_date_to``: rango sobre la
               fecha de acusación del expediente.
             - ``hearing_from`` / ``hearing_to``: rango sobre la fecha/hora de
@@ -172,6 +183,7 @@ class CaseFileMethods(_ServiceMixin):
             defendant_status=defendant_status,
             verdict_status=verdict_status,
             crime_type=crime_type,
+            origin_location=origin_location,
             indictment_date_from=indictment_date_from,
             indictment_date_to=indictment_date_to,
             hearing_from=hearing_from,
@@ -192,6 +204,7 @@ class CaseFileMethods(_ServiceMixin):
         defendant_status: str | None = None,
         verdict_status: str | None = None,
         crime_type: str | None = None,
+        origin_location: str | None = None,
         indictment_date_from: date | None = None,
         indictment_date_to: date | None = None,
         hearing_from: datetime | None = None,
@@ -213,6 +226,7 @@ class CaseFileMethods(_ServiceMixin):
             defendant_status=defendant_status,
             verdict_status=verdict_status,
             crime_type=crime_type,
+            origin_location=origin_location,
             indictment_date_from=indictment_date_from,
             indictment_date_to=indictment_date_to,
             hearing_from=hearing_from,

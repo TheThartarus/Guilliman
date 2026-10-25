@@ -2,6 +2,7 @@
 
 import os
 import sys
+from datetime import date
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -38,6 +39,63 @@ def test_search_by_crime_type(tmp_path, monkeypatch) -> None:
 
         # Sin filtro devuelve todos (incluido el expediente sin tipo).
         assert len(service.search_case_files("", crime_type=None)) == 4
+    finally:
+        service.close()
+        dispose_engine(db_path)
+        reset_session_factory()
+
+
+def test_search_by_text_dates_and_origin(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("Guilliman_DATA_DIR", str(tmp_path / "data"))
+    (tmp_path / "data").mkdir()
+    db_path = str(tmp_path / "search2.db")
+    service = CaseFileService(db_path)
+    service.init_db()
+    try:
+        service.create_case_file(
+            CaseFileCreate(
+                case_number="B-1",
+                offense_description="Robo agravado",
+                facts_summary="Sustracción a mano armada en la vía pública",
+                location="Sector Centro",
+                origin_location="Municipio Libertador",
+                indictment_date=date(2026, 3, 15),
+            )
+        )
+        service.create_case_file(
+            CaseFileCreate(
+                case_number="B-2",
+                facts_summary="Hurto simple",
+                indictment_date=date(2026, 6, 1),
+            )
+        )
+
+        # Texto libre sobre descripción, hechos y ubicación.
+        for term in ("mano armada", "Sector Centro", "Robo agravado"):
+            assert [c.case_number for c in service.search_case_files(term)] == ["B-1"]
+
+        # Procedencia.
+        assert [
+            c.case_number
+            for c in service.search_case_files("", origin_location="Libertador")
+        ] == ["B-1"]
+        assert service.count_case_files(origin_location="Libertador") == 1
+
+        # Rango de fechas de acusación.
+        assert [
+            c.case_number
+            for c in service.search_case_files(
+                "",
+                indictment_date_from=date(2026, 1, 1),
+                indictment_date_to=date(2026, 4, 1),
+            )
+        ] == ["B-1"]
+        assert [
+            c.case_number
+            for c in service.search_case_files(
+                "", indictment_date_from=date(2026, 5, 1)
+            )
+        ] == ["B-2"]
     finally:
         service.close()
         dispose_engine(db_path)

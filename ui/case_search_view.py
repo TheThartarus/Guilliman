@@ -37,6 +37,7 @@ from qfluentwidgets import (
 
 from db import CaseFileRead
 
+from ui import settings as app_settings
 from ui.dialogs import confirm_delete, pick_save_pdf
 from ui.exporters import export_cases_csv, export_cases_pdf
 from ui.shared import (
@@ -44,9 +45,11 @@ from ui.shared import (
     DEFENDANT_STATUS_OPTIONS,
     VERDICT_STATUS_DOMAIN,
     VERDICT_STATUS_OPTIONS,
+    parse_date_text,
 )
 from ui.widgets import (
     combo_current_data,
+    combo_set_data,
     show_error,
     show_info,
 )
@@ -64,7 +67,9 @@ class CaseSearchView(QWidget):
         self._page = 0  # página actual (0-indexed)
         self._page_size = 50
         self._total = 0  # total de resultados de la última búsqueda
+        self._last_saved_filters: dict = {}
         self._build()
+        self._restore_filters()
 
     def _build(self) -> None:
         layout = QVBoxLayout(self)
@@ -126,7 +131,23 @@ class CaseSearchView(QWidget):
         row2.addWidget(self.witness_name, 1)
         f_layout.addLayout(row2)
 
-        # Fila 3: acciones.
+        # Fila 3: rango de fechas de acusación + procedencia.
+        row_dates = QHBoxLayout()
+        self.indictment_from = LineEdit()
+        self.indictment_from.setPlaceholderText("dd/mm/aaaa")
+        self.indictment_to = LineEdit()
+        self.indictment_to.setPlaceholderText("dd/mm/aaaa")
+        self.origin_location = LineEdit()
+        self.origin_location.setPlaceholderText("Procedencia")
+        row_dates.addWidget(BodyLabel("Acusación desde:"))
+        row_dates.addWidget(self.indictment_from, 1)
+        row_dates.addWidget(BodyLabel("hasta:"))
+        row_dates.addWidget(self.indictment_to, 1)
+        row_dates.addWidget(BodyLabel("Procedencia:"))
+        row_dates.addWidget(self.origin_location, 2)
+        f_layout.addLayout(row_dates)
+
+        # Fila 4: acciones.
         row3 = QHBoxLayout()
         self.search_btn = PrimaryPushButton("Buscar")
         self.search_btn.clicked.connect(self._do_search)
@@ -151,6 +172,9 @@ class CaseSearchView(QWidget):
             self.defendant_name,
             self.victim_name,
             self.witness_name,
+            self.indictment_from,
+            self.indictment_to,
+            self.origin_location,
         ):
             field.textChanged.connect(self._schedule_search)
         for combo in (self.defendant_status, self.verdict_status, self.crime_type):
@@ -193,6 +217,46 @@ class CaseSearchView(QWidget):
         """Recarga la tabla con los filtros actuales (vacío = todos)."""
         self._do_search()
 
+    def _collect_filters(self) -> dict:
+        return {
+            "query": self.query.text(),
+            "defendant_status": combo_current_data(self.defendant_status) or "",
+            "verdict_status": combo_current_data(self.verdict_status) or "",
+            "crime_type": combo_current_data(self.crime_type) or "",
+            "defendant_name": self.defendant_name.text(),
+            "victim_name": self.victim_name.text(),
+            "witness_name": self.witness_name.text(),
+            "indictment_from": self.indictment_from.text(),
+            "indictment_to": self.indictment_to.text(),
+            "origin_location": self.origin_location.text(),
+            "include_archived": self.include_archived.isChecked(),
+        }
+
+    def _save_filters(self) -> None:
+        """Persiste los filtros si cambiaron desde el último guardado."""
+        data = self._collect_filters()
+        if data != self._last_saved_filters:
+            app_settings.save_search_filters(data)
+            self._last_saved_filters = data
+
+    def _restore_filters(self) -> None:
+        """Restaura los filtros guardados de la última ejecución."""
+        data = app_settings.load_search_filters()
+        self._last_saved_filters = data
+        if not data:
+            return
+        self.query.setText(str(data.get("query", "")))
+        self.defendant_name.setText(str(data.get("defendant_name", "")))
+        self.victim_name.setText(str(data.get("victim_name", "")))
+        self.witness_name.setText(str(data.get("witness_name", "")))
+        self.indictment_from.setText(str(data.get("indictment_from", "")))
+        self.indictment_to.setText(str(data.get("indictment_to", "")))
+        self.origin_location.setText(str(data.get("origin_location", "")))
+        combo_set_data(self.defendant_status, data.get("defendant_status") or "")
+        combo_set_data(self.verdict_status, data.get("verdict_status") or "")
+        combo_set_data(self.crime_type, data.get("crime_type") or "")
+        self.include_archived.setChecked(bool(data.get("include_archived", False)))
+
     def _clear_filters(self) -> None:
         self.query.clear()
         self.defendant_status.setCurrentIndex(0)
@@ -201,6 +265,9 @@ class CaseSearchView(QWidget):
         self.defendant_name.clear()
         self.victim_name.clear()
         self.witness_name.clear()
+        self.indictment_from.clear()
+        self.indictment_to.clear()
+        self.origin_location.clear()
         self.include_archived.setChecked(False)
         self._page = 0
         self._do_search()
@@ -225,6 +292,9 @@ class CaseSearchView(QWidget):
         witness_name = (self.witness_name.text() or "").strip() or None
         crime_type = combo_current_data(self.crime_type) or None
         include_archived = self.include_archived.isChecked()
+        indictment_from = parse_date_text(self.indictment_from.text())
+        indictment_to = parse_date_text(self.indictment_to.text())
+        origin_location = (self.origin_location.text() or "").strip() or None
 
         # Obtener total para paginación.
         self._total = self.app.service.count_case_files(
@@ -235,6 +305,9 @@ class CaseSearchView(QWidget):
             defendant_status=defendant_status,
             verdict_status=verdict_status,
             crime_type=crime_type,
+            origin_location=origin_location,
+            indictment_date_from=indictment_from,
+            indictment_date_to=indictment_to,
             include_archived=include_archived,
         )
         max_page = max(0, (self._total - 1) // self._page_size)
@@ -252,6 +325,9 @@ class CaseSearchView(QWidget):
                 defendant_status=defendant_status,
                 verdict_status=verdict_status,
                 crime_type=crime_type,
+                origin_location=origin_location,
+                indictment_date_from=indictment_from,
+                indictment_date_to=indictment_to,
                 include_archived=include_archived,
             )
         except ValueError as exc:
@@ -283,6 +359,7 @@ class CaseSearchView(QWidget):
         self.table.setSortingEnabled(True)
 
         self._update_pager()
+        self._save_filters()
 
     def _on_export_pdf(self) -> None:
         if not self._last_cases:
