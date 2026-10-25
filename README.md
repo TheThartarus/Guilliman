@@ -16,6 +16,8 @@ Aplicación de escritorio nativa para Windows diseñada para la gestión integra
   audiencias pendientes de audio o acta y alertas de detención; tabla de las próximas
   audiencias. Cada tarjeta navega a la vista o listado correspondiente.
 - **Gestión de expedientes** — Número de expediente único, fiscalía, fiscal, defensa, agencia aprehendadora, descripción del hecho, resumen, tipo de origen, estado de fallo y fechas procesales.
+- **Múltiples delitos por expediente** — Cada causa puede registrar varios delitos, cada
+  uno con sus datos de droga o armas cuando corresponda.
 - **Archivado y restauración** — Los expedientes se archivan (no se borran) y pueden
   restaurarse; el borrado definitivo queda como acción explícita sobre un archivado.
 - **Plazos de detención** — Alerta configurable (Ajustes) para acusados detenidos que
@@ -43,6 +45,8 @@ Aplicación de escritorio nativa para Windows diseñada para la gestión integra
   continuaciones.
 - **Búsqueda de expedientes** — Por número, fiscalía u otros criterios.
 - **Exportación a PDF** — Del expediente individual y de la agenda completa (reportlab).
+- **Estadísticas y reportes** — Expedientes por tipo de delito y fiscales, audiencias por
+  mes (últimos 12), con exportación a PDF y CSV.
 - **Respaldo completo** — Un solo `.zip` con la base de datos y todos los audios (Ajustes).
   El "Respaldo rápido" rota automáticamente y conserva los últimos 10.
 - **Verificación de audios** — Detecta audios referenciados que faltan en disco o que

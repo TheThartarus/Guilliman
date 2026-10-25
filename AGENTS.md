@@ -56,6 +56,13 @@ Compact guidance for agents working in this repo. Signals only.
 - **Detention alerts**: `list_detention_alerts(threshold_days)` returns detained
   defendants (`status == "Detenido"`, active cases) at/over the threshold configured in
   `ui.settings` (`detention_alert_days`, default 30).
+- **Multiple crimes**: `CaseFile.crimes` (table `crimes`) holds one or more delitos with
+  optional drug/weapon details. `create_case_file(..., crimes_list=...)` and
+  `set_case_crimes(id, list)` manage them. The legacy single-crime columns no longer
+  exist; the dev database is recreated in cold mode while the app is not in production.
+- **Statistics**: `get_statistics()` returns `StatisticsSummary` (cases by crime type,
+  top prosecutors, last 12 months of hearings); `ui/stats_view.py` renders and exports
+  to PDF/CSV.
 
 ## Quirks / gotchas
 - `.opencode/node_modules` and `.opencode/package.json` are **OpenCode's own plugin
@@ -71,7 +78,9 @@ Compact guidance for agents working in this repo. Signals only.
   add a new runtime import, add its `--hidden-import` or the frozen exe fails at startup.
 - **Migrations** are sequential integer versions in `db/migrations.py`, applied by
   `init_db()` only for versions newer than the recorded `schema_version`. Never edit a
-  released migration; append a new entry to `MIGRATIONS` instead.
+  released migration; append a new entry to `MIGRATIONS` instead. `MIGRATIONS` is
+  currently empty: the app is not in production, so schema changes are applied by
+  recreating the dev database in cold mode.
 - **Backups**: the user-facing "Respaldar datos" flow uses `backup_data()` /
   `restore_data()`, which zip the `.db` **and** the `audios/` + `attachments/` stores.
   `backup_db()` / `restore_db()` remain DB-only (legacy). `restore_data()` validates the

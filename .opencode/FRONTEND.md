@@ -24,11 +24,16 @@ Desktop UI: PyQt5 + qfluentwidgets (FluentWindow). Windows-only, 32-bit target.
   actions. A "Incluir archivados" checkbox exposes archived rows; the context menu offers
   Archivar (active) or Restaurar / Eliminar definitivamente (archived).
 - `case_form_view.py` — create / edit form for a case file and its child entities.
+  Crimes are managed as an in-memory list (`CrimeDialog`) and saved via
+  `create_case_file(..., crimes_list=...)` / `set_case_crimes(...)`.
+- `stats_view.py` — statistics dashboard (totals, cases by crime type, top prosecutors,
+  hearings by month) with PDF/CSV export.
 - `case_detail_view/` — read-only detail of a case file (package, not single file).
   Split into mixins per entity: `_defendants.py`, `_victims.py`, `_witnesses.py`,
-  `_documentaries.py`, `_attachments.py`, `_experts.py`, `_hearings.py`. All combined in
-  `CaseDetailView` via multiple inheritance. `_attachments.py` lists case documents
-  (attach/open/delete; files stored under `attachments/`). `_hearings.py` shows "Acta" and "Audio"
+  `_documentaries.py`, `_attachments.py`, `_crimes.py`, `_experts.py`, `_hearings.py`.
+  All combined in `CaseDetailView` via multiple inheritance. `_attachments.py` lists case
+  documents (attach/open/delete; files stored under `attachments/`); `_crimes.py` lists
+  the case's crimes (read-only). `_hearings.py` shows "Acta" and "Audio"
   columns, an "Acta" button, and a context menu with edit acta, duplicate (+7 days),
   export acta (PDF/RTF), print acta and open audio (resolved via
   `service.get_audio_abs_path`). The header has an Archivar/Restaurar button; editing is
@@ -42,7 +47,7 @@ Desktop UI: PyQt5 + qfluentwidgets (FluentWindow). Windows-only, 32-bit target.
   `_defendant.py` (`DefendantDialog`), `_person.py` (`VictimDialog`, `WitnessDialog`),
   `_record.py` (`DocumentaryDialog`, `ExpertDialog`), `_hearing.py` (`HearingDialog`),
   `_transcription.py` (`HearingTranscriptionDialog`),
-  `_detention.py` (`DetentionAlertsDialog`),
+  `_detention.py` (`DetentionAlertsDialog`), `_crime.py` (`CrimeDialog`),
   `_cards.py` (`_DateCard`, `_DateTimeCard`, `_FlaggedDateCard`), `_misc.py` (`confirm_delete`, `pick_save_pdf`),
   `_sizes.py` (dialog dimension constants). All re-exported from `dialogs/__init__.py`.
   `HearingDialog` also attaches audio: it copies the file (via `service.store_audio_file`)
@@ -58,7 +63,7 @@ Desktop UI: PyQt5 + qfluentwidgets (FluentWindow). Windows-only, 32-bit target.
 
 ## Navigation (`AppShell`)
 - Fixed sub-interfaces (objectName = route key): `dashboard`, `search`, `new`, `agenda`,
-  `settings`, `about`. Startup lands on `dashboard`.
+  `stats`, `settings`, `about`. Startup lands on `dashboard`.
 - Dynamic routes for case detail / edit are added via `addSubInterface` with keys
   `detail-{case_id}` / `edit-{case_id}` and removed by `_close_route`. When adding a
   new dynamic view, follow this key + `on_close=self._close_route` pattern.
@@ -114,6 +119,8 @@ Desktop UI: PyQt5 + qfluentwidgets (FluentWindow). Windows-only, 32-bit target.
 - `export_case_pdf(case: CaseFileRead, filepath)`, `export_agenda_pdf(items, start, end, filepath)`
   use reportlab.
 - `export_agenda_ics(items, filepath)` writes RFC 5545 iCalendar (CRLF, escaped text).
+- `export_statistics_pdf(summary, filepath)` / `export_statistics_csv(summary, filepath)`
+  render the `StatisticsSummary` report.
 - `export_hearing_minutes_pdf(case, hearing, filepath)` / `export_hearing_minutes_rtf(...)`
   render a hearing acta (RTF is pure ASCII with `\uN?` escapes, editable in Word).
 - Pure (no PyQt dependency) — takes db DTOs + `ui.shared` labels.

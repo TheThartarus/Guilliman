@@ -45,9 +45,9 @@ Persistence + business logic. Pure Python (SQLAlchemy 2.0 + SQLite, pydantic). N
 
 ## Models (`models.py`)
 - `CaseFile` (1) — children (N): `Defendant`, `Victim`, `Witness`, `Documentary`,
-  `Expert`, `ActingOfficial`, `HearingSchedule`, `Attachment`.
+  `Expert`, `ActingOfficial`, `HearingSchedule`, `Attachment`, `Crime`.
   Tables: `case_files`, `defendants`, `victims`, `witnesses`, `documentaries`,
-  `experts`, `acting_officials`, `hearing_schedules`, `attachments`.
+  `experts`, `acting_officials`, `hearing_schedules`, `attachments`, `crimes`.
 - All child FKs use `ondelete="CASCADE"` and relationships use
   `cascade="all, delete-orphan"`, `passive_deletes=True`, `lazy="selectin"`.
   Deleting a `CaseFile` removes all its children automatically.
@@ -66,6 +66,8 @@ Persistence + business logic. Pure Python (SQLAlchemy 2.0 + SQLite, pydantic). N
     `audio_filename` (original name).
   - `Attachment`: `name` (display title), `original_filename`, `rel_path` (relative to
     `get_app_data_dir()`, under `attachments/`), `uploaded_at`.
+  - `Crime`: `crime_type` (required), optional `drug_quantity`/`drug_type` and
+    `weapon_quantity`/`weapon_type`. One case can have many crimes.
 
 ## Schemas (`schemas.py`)
 - `*Create` = input validation.
@@ -85,6 +87,9 @@ Persistence + business logic. Pure Python (SQLAlchemy 2.0 + SQLite, pydantic). N
   (`"missing"` | `"outside_store"`). Produced by `check_audio_integrity()`.
 - `AttachmentCreate` / `AttachmentRead` cover case documents; `CaseFileRead.attachments`
   includes them eagerly.
+- `CrimeCreate` / `CrimeRead` cover the case's crimes; `CaseFileRead.crimes` includes
+  them eagerly.
+- `CountItem` / `StatisticsSummary` are returned by `get_statistics()`.
 - `DetentionAlertItem` (case/defendant/days) is produced by `list_detention_alerts()`;
   `DefendantRead.days_detained` is computed only when `status == "Detenido"`.
 - `HearingScheduleCreate` / `HearingScheduleUpdate` / `HearingScheduleRead` carry
@@ -97,20 +102,26 @@ Persistence + business logic. Pure Python (SQLAlchemy 2.0 + SQLite, pydantic). N
   (`"Detained"`, `"Custody"`, `"Conditional release"`) are legacy data, not valid input.
 
 ## Service methods (`service.py`)
-- Case files: `create_case_file(case_file_data, defendants_list=None, victims_list=None,
-  witnesses_list=None, documentaries_list=None, experts_list=None, hearings_list=None) -> int`,
+- Case files: `create_case_file(case_file_data, crimes_list=None, defendants_list=None,
+  victims_list=None, witnesses_list=None, documentaries_list=None, experts_list=None,
+  hearings_list=None) -> int`,
   `search_case_files(...)`, `get_case_file_by_id(id) -> CaseFileRead | None`,
   `update_case_file(id, data) -> bool`, `delete_case_file(id) -> bool`.
 - `search_case_files` accepts combinable filters (all optional, AND logic):
   `query` (free text on case_number, MP ref, offense description, facts summary and
   location), `defendant_name`, `victim_name`, `witness_name` (LIKE substring),
-  `defendant_status`, `verdict_status`, `crime_type` (exact match), `origin_location`
-  (LIKE), `indictment_date_from/to`, `hearing_from/to` (date ranges), and
-  `include_archived` (default `False` excludes archived rows).
-  Empty `query` returns all matching records.
+  `defendant_status`, `verdict_status`, `crime_type` (matches any `crimes` row),
+  `origin_location` (LIKE), `indictment_date_from/to`, `hearing_from/to` (date ranges),
+  and `include_archived` (default `False` excludes archived rows). Empty `query` returns
+  all matching records.
 - Case file lifecycle: `archive_case_file(id)` / `unarchive_case_file(id)` toggle
   `archived_at`. Both return `False` if the record is missing or already in that state.
   `delete_case_file(id)` remains the permanent delete.
+- Crimes: `set_case_crimes(case_id, list[CrimeCreate]) -> bool` replaces the whole list
+  atomically. `create_case_file(..., crimes_list=...)` also accepts crimes.
+- Statistics: `get_statistics() -> StatisticsSummary` (totals, cases by crime type,
+  top 10 prosecutors, hearings by month for the last 12 months; active cases only for
+  the groupings).
 - Children — each exposes `add_* -> int`, `update_* -> bool`, `delete_* -> bool`:
   defendants, victims, witnesses, documentaries, experts, hearings. Hearings also expose
   `update_hearing_status(...)`, `duplicate_hearing(hearing_id, days=7)` (copies type
@@ -159,10 +170,9 @@ Persistence + business logic. Pure Python (SQLAlchemy 2.0 + SQLite, pydantic). N
 
 ## Migrations (`migrations.py`) — extensible stub
 - The schema is the source of truth in `models.py` and is created by
-  `Base.metadata.create_all()` inside `init_db()`. The migrations applied during
-  development (new columns + legacy English→Spanish data translation) were
-  consolidated into the models, and the dev database was reset — so `MIGRATIONS`
-  starts **empty**.
+  `Base.metadata.create_all()` inside `init_db()`. The app is not in production, so
+  `MIGRATIONS` is empty and schema changes are applied by recreating the dev DB in cold
+  mode. Append new versions when a real deployment needs them; never edit released ones.
 - `migrations.py` is kept as a functional harness to evolve an *existing* database
   later (first deployment, or a model change over data you don't want to drop).
   `init_db()` applies only versions greater than the recorded `schema_version`;
