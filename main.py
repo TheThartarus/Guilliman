@@ -99,7 +99,19 @@ def main() -> None:
     app.aboutToQuit.connect(_shutdown)
 
     window = AppShell(service)
-    window.showMaximized()
+    state = app_settings.load_window_state()
+    if state and not state.get("maximized", True):
+        window.resize(int(state.get("width", 1120)), int(state.get("height", 740)))
+        window.show()
+    else:
+        window.showMaximized()
+
+    def _save_window_state() -> None:
+        app_settings.save_window_state(
+            window.isMaximized(), window.width(), window.height()
+        )
+
+    app.aboutToQuit.connect(_save_window_state)
     sys.exit(app.exec())
 
 
