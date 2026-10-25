@@ -28,7 +28,7 @@ from datetime import date, datetime, timedelta  # noqa: E402
 from db import CaseFileCreate, CaseFileService, HearingScheduleCreate  # noqa: E402
 from db.database import dispose_engine, reset_session_factory  # noqa: E402
 from ui import dialogs  # noqa: E402
-from ui.dialogs import DefendantDialog, HearingDialog, HearingTranscriptionDialog  # noqa: E402
+from ui.dialogs import CrimeDialog, DefendantDialog, HearingDialog, HearingTranscriptionDialog  # noqa: E402
 from ui.dialogs import _defendant, _hearing, _transcription  # noqa: E402
 from ui.widgets import combo_set_data  # noqa: E402
 
@@ -242,6 +242,27 @@ def test_hearing_transcription_dialog_autosaves():
         )
     finally:
         _cleanup(db)
+
+
+def test_crime_dialog_collapses_conditional_rows():
+    dlg = CrimeDialog(None)
+    assert dlg._drug_quantity.isHidden()
+    assert dlg._weapon_quantity.isHidden()
+    base_height = dlg.sizeHint().height()
+
+    combo_set_data(dlg._type, "Droga")
+    assert not dlg._drug_quantity.isHidden()
+    assert dlg._weapon_quantity.isHidden()
+    assert dlg.sizeHint().height() > base_height
+
+    combo_set_data(dlg._type, "Armas")
+    assert dlg._drug_quantity.isHidden()
+    assert not dlg._weapon_quantity.isHidden()
+
+    combo_set_data(dlg._type, "Ordinario")
+    assert dlg._drug_quantity.isHidden()
+    assert dlg._weapon_quantity.isHidden()
+    assert dlg.sizeHint().height() == base_height
 
 
 def test_defendant_dialog_input_validators():

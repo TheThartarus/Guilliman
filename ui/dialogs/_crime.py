@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 
-from PyQt5.QtWidgets import QDialog, QFormLayout, QHBoxLayout, QVBoxLayout, QWidget
+from PyQt5.QtWidgets import QDialog, QFormLayout, QHBoxLayout, QVBoxLayout
 
 from pydantic import ValidationError
 from qfluentwidgets import (
@@ -23,7 +23,7 @@ from db import CrimeCreate
 from ui.shared import CRIME_TYPE_OPTIONS, DRUG_TYPE_LABELS, WEAPON_TYPE_LABELS
 from ui.widgets import combo_current_data, combo_set_data, show_error
 
-from ._sizes import CRIME_DIALOG_HEIGHT, CRIME_DIALOG_WIDTH
+from ._sizes import CRIME_DIALOG_WIDTH
 
 logger = logging.getLogger("guilliman")
 
@@ -62,22 +62,19 @@ class CrimeDialog(QDialog):
         layout.setSpacing(12)
         layout.addWidget(SubtitleLabel(self.windowTitle()))
 
-        type_box = QWidget()
-        type_form = QFormLayout(type_box)
-        type_form.addRow(BodyLabel("Tipo de Delito *"), self._type)
-        layout.addWidget(type_box)
-
-        self._drug_box = QWidget()
-        drug_form = QFormLayout(self._drug_box)
-        drug_form.addRow(BodyLabel("Cantidad de Droga"), self._drug_quantity)
-        drug_form.addRow(BodyLabel("Tipo de Droga"), self._drug_type)
-        layout.addWidget(self._drug_box)
-
-        self._weapon_box = QWidget()
-        weapon_form = QFormLayout(self._weapon_box)
-        weapon_form.addRow(BodyLabel("Cantidad de Armas"), self._weapon_quantity)
-        weapon_form.addRow(BodyLabel("Tipo de Armas"), self._weapon_type)
-        layout.addWidget(self._weapon_box)
+        form = QFormLayout()
+        form.setSpacing(8)
+        self._type_label = BodyLabel("Tipo de Delito *")
+        form.addRow(self._type_label, self._type)
+        self._drug_quantity_label = BodyLabel("Cantidad de Droga")
+        form.addRow(self._drug_quantity_label, self._drug_quantity)
+        self._drug_type_label = BodyLabel("Tipo de Droga")
+        form.addRow(self._drug_type_label, self._drug_type)
+        self._weapon_quantity_label = BodyLabel("Cantidad de Armas")
+        form.addRow(self._weapon_quantity_label, self._weapon_quantity)
+        self._weapon_type_label = BodyLabel("Tipo de Armas")
+        form.addRow(self._weapon_type_label, self._weapon_type)
+        layout.addLayout(form)
 
         buttons = QHBoxLayout()
         self.save_btn = PrimaryPushButton("Guardar")
@@ -100,19 +97,32 @@ class CrimeDialog(QDialog):
                 combo_set_data(self._weapon_type, crime.weapon_type)
 
         self._type.currentIndexChanged.connect(self._update_visibility)
+        self.setMinimumWidth(CRIME_DIALOG_WIDTH)
         self._update_visibility()
-        self.resize(CRIME_DIALOG_WIDTH, CRIME_DIALOG_HEIGHT)
 
     def _update_visibility(self) -> None:
         crime_type = combo_current_data(self._type)
-        self._drug_box.setVisible(crime_type == "Droga")
-        self._weapon_box.setVisible(crime_type == "Armas")
-        if crime_type != "Droga":
+        is_drug = crime_type == "Droga"
+        is_weapon = crime_type == "Armas"
+        for label, widget in (
+            (self._drug_quantity_label, self._drug_quantity),
+            (self._drug_type_label, self._drug_type),
+        ):
+            label.setVisible(is_drug)
+            widget.setVisible(is_drug)
+        for label, widget in (
+            (self._weapon_quantity_label, self._weapon_quantity),
+            (self._weapon_type_label, self._weapon_type),
+        ):
+            label.setVisible(is_weapon)
+            widget.setVisible(is_weapon)
+        if not is_drug:
             self._drug_quantity.setValue(0.0)
             self._drug_type.setCurrentIndex(-1)
-        if crime_type != "Armas":
+        if not is_weapon:
             self._weapon_quantity.setValue(0)
             self._weapon_type.setCurrentIndex(-1)
+        self.adjustSize()
 
     def _build_crime(self) -> CrimeCreate:
         crime_type = combo_current_data(self._type)
