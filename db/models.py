@@ -127,6 +127,12 @@ class CaseFile(Base):
         passive_deletes=True,
         lazy="selectin",
     )
+    attachments: Mapped[list["Attachment"]] = relationship(
+        back_populates="case_file",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        lazy="selectin",
+    )
 
     def __repr__(self) -> str:
         return f"<CaseFile id={self.id} case_number={self.case_number!r}>"
@@ -308,3 +314,28 @@ class HearingSchedule(Base):
 
     def __repr__(self) -> str:
         return f"<HearingSchedule id={self.id} scheduled_at={self.scheduled_at!r}>"
+
+
+class Attachment(Base):
+    """Un documento adjunto a un expediente (tabla: ``attachments``)."""
+
+    __tablename__ = "attachments"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    case_file_id: Mapped[int] = mapped_column(
+        ForeignKey("case_files.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    # Título visible del documento (p. ej. "Cédula del acusado").
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    # Nombre original del archivo, para mostrar al usuario.
+    original_filename: Mapped[str | None] = mapped_column(String(300))
+    # Ruta relativa (al directorio de datos) del archivo copiado.
+    rel_path: Mapped[str] = mapped_column(String(500), nullable=False)
+    uploaded_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.current_timestamp(), nullable=False
+    )
+
+    case_file: Mapped[CaseFile] = relationship(back_populates="attachments")
+
+    def __repr__(self) -> str:
+        return f"<Attachment id={self.id} name={self.name!r}>"

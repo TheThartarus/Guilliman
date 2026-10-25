@@ -17,6 +17,8 @@ from .exceptions import (
 from .schemas import (
     ActingOfficialCreate,
     ActingOfficialRead,
+    AttachmentCreate,
+    AttachmentRead,
     AudioIntegrityIssue,
     CaseFileCreate,
     CaseFileRead,
@@ -25,6 +27,7 @@ from .schemas import (
     DefendantCreate,
     DefendantRead,
     DefendantStatusValue,
+    DetentionAlertItem,
     DocumentaryCreate,
     DocumentaryRead,
     DrugTypeValue,
@@ -46,6 +49,8 @@ from .service import CaseFileService
 __all__ = [
     "ActingOfficialCreate",
     "ActingOfficialRead",
+    "AttachmentCreate",
+    "AttachmentRead",
     "AudioIntegrityIssue",
     "CaseFileService",
     "setup_logging",
@@ -56,6 +61,7 @@ __all__ = [
     "DefendantCreate",
     "DefendantRead",
     "DefendantStatusValue",
+    "DetentionAlertItem",
     "DrugTypeValue",
     "VictimCreate",
     "VictimRead",

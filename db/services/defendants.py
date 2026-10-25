@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+from datetime import date
+
+from sqlalchemy import select
+
 from ..database import session_scope
 from ..exceptions import CaseFileNotFoundError
 from ..models import CaseFile, Defendant
-from ..schemas import DefendantCreate
+from ..schemas import DefendantCreate, DetentionAlertItem
 from ._base import _ServiceMixin
 
 
@@ -69,3 +73,40 @@ class DefendantMethods(_ServiceMixin):
                 return False
             session.delete(defendant)
             return True
+
+    def list_detention_alerts(self, threshold_days: int) -> list[DetentionAlertItem]:
+        """Lista acusados detenidos que alcanzan o superan ``threshold_days``.
+
+        Solo considera expedientes activos (no archivados) y acusados con
+        estado ``Detenido`` y ``arrest_date`` registrada.
+
+        Returns:
+            Lista ordenada de mayor a menor cantidad de días detenido.
+        """
+        statement = (
+            select(Defendant, CaseFile.case_number)
+            .join(CaseFile, Defendant.case_file_id == CaseFile.id)
+            .where(Defendant.status == "Detenido")
+            .where(Defendant.arrest_date.is_not(None))
+            .where(CaseFile.archived_at.is_(None))
+        )
+        today = date.today()
+        alerts: list[DetentionAlertItem] = []
+        with session_scope(self._db_path) as session:
+            for defendant, case_number in session.execute(statement).all():
+                days = max(0, (today - defendant.arrest_date).days)
+                if days < threshold_days:
+                    continue
+                alerts.append(
+                    DetentionAlertItem(
+                        case_file_id=defendant.case_file_id,
+                        case_number=case_number,
+                        defendant_id=defendant.id,
+                        full_name=defendant.full_name,
+                        arrest_date=defendant.arrest_date,
+                        days_detained=days,
+                        status=defendant.status,
+                    )
+                )
+        alerts.sort(key=lambda item: item.days_detained, reverse=True)
+        return alerts

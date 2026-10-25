@@ -21,29 +21,37 @@ class _ServiceMixin:
     """Mixin base: propiedad de ruta y aplicadores PATCH compartidos."""
 
     @staticmethod
-    def _delete_stored_audio(rel_path: str | None) -> None:
-        """Borra un audio del store, solo si vive dentro de ``<data_dir>/audios/``.
+    def _delete_stored_file(rel_path: str | None, subdir: str) -> None:
+        """Borra un archivo del store indicado, solo si vive dentro de él.
 
-        Ignora silenciosamente los audios ya inexistentes (no rompe el borrado
-        de la fila) y registra en el logger cualquier anomalía o fallo.
+        Ignora archivos ya inexistentes y registra anomalías sin romper el
+        borrado de la fila.
         """
         if not rel_path:
             return
         data_dir = get_app_data_dir().resolve()
-        audio_dir = (data_dir / "audios").resolve()
+        store_dir = (data_dir / subdir).resolve()
         target = (data_dir / rel_path).resolve()
         try:
-            target.relative_to(audio_dir)
+            target.relative_to(store_dir)
         except ValueError:
-            logger.warning("Refusing to delete audio outside store: %s", target)
+            logger.warning("Refusing to delete file outside %s: %s", subdir, target)
             return
         if not target.exists():
-            logger.info("Audio file already missing, nothing to delete: %s", target)
+            logger.info("Stored file already missing, nothing to delete: %s", target)
             return
         try:
             target.unlink()
         except OSError as error:  # p. ej. archivo en uso en Windows
-            logger.warning("Could not delete audio file %s: %s", target, error)
+            logger.warning("Could not delete stored file %s: %s", target, error)
+
+    @classmethod
+    def _delete_stored_audio(cls, rel_path: str | None) -> None:
+        cls._delete_stored_file(rel_path, "audios")
+
+    @classmethod
+    def _delete_stored_attachment(cls, rel_path: str | None) -> None:
+        cls._delete_stored_file(rel_path, "attachments")
 
     @property
     def db_path(self) -> str | None:

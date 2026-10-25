@@ -62,6 +62,13 @@ def _compute_age(birth_date: date | None) -> int | None:
     return age
 
 
+def _compute_days_detained(arrest_date: date | None, status: str | None) -> int | None:
+    """Calcula los días detenido para un acusado con estado ``Detenido``."""
+    if arrest_date is None or status != "Detenido":
+        return None
+    return max(0, (date.today() - arrest_date).days)
+
+
 # --------------------------------------------------------------------------- #
 # Acusados
 # --------------------------------------------------------------------------- #
@@ -91,6 +98,7 @@ class DefendantRead(BaseModel):
     birth_date: date | None = None
     age: int | None = None
     arrest_date: date | None = None
+    days_detained: int | None = None
     presentation_hearing_date: date | None = None
     status: str | None = None
     verdict_status: str | None = None
@@ -104,7 +112,20 @@ class DefendantRead(BaseModel):
     @model_validator(mode="after")
     def _compute_age_from_birth_date(self) -> "DefendantRead":
         self.age = _compute_age(self.birth_date)
+        self.days_detained = _compute_days_detained(self.arrest_date, self.status)
         return self
+
+
+class DetentionAlertItem(BaseModel):
+    """Acusado detenido que alcanza o supera el umbral configurado."""
+
+    case_file_id: int
+    case_number: str
+    defendant_id: int
+    full_name: str
+    arrest_date: date
+    days_detained: int
+    status: str
 
 
 # --------------------------------------------------------------------------- #
@@ -302,6 +323,28 @@ class HearingScheduleRead(BaseModel):
 
 
 # --------------------------------------------------------------------------- #
+# Documentos adjuntos
+# --------------------------------------------------------------------------- #
+class AttachmentCreate(BaseModel):
+    """Carga de entrada para adjuntar un documento a un expediente."""
+
+    name: str = Field(..., min_length=1, max_length=200)
+
+
+class AttachmentRead(BaseModel):
+    """Representación de un documento adjunto devuelta al frontend."""
+
+    id: int
+    case_file_id: int
+    name: str
+    original_filename: str | None = None
+    rel_path: str
+    uploaded_at: datetime | None = None
+
+    model_config = {"from_attributes": True}
+
+
+# --------------------------------------------------------------------------- #
 # Expedientes
 # --------------------------------------------------------------------------- #
 class CaseFileCreate(BaseModel):
@@ -417,6 +460,7 @@ class CaseFileRead(BaseModel):
     experts: list[ExpertRead] = []
     acting_officials: list[ActingOfficialRead] = []
     hearings: list[HearingScheduleRead] = []
+    attachments: list[AttachmentRead] = []
 
     model_config = {"from_attributes": True}
 

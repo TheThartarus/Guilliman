@@ -16,6 +16,9 @@ build/
 # Audio store (copias locales de audios de audiencias)
 audios/
 
+# Attachment store (documentos adjuntos de expedientes)
+attachments/
+
 # Frontend local settings (theme preference, etc.)
 settings.json
 

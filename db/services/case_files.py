@@ -359,7 +359,12 @@ class CaseFileMethods(_ServiceMixin):
             # Recolectar antes de eliminar: la cascada borra las filas de
             # audiencias y perderíamos sus audio_path.
             audio_paths = [h.audio_path for h in case_file.hearings if h.audio_path]
+            attachment_paths = [
+                a.rel_path for a in case_file.attachments if a.rel_path
+            ]
             session.delete(case_file)
             for rel_path in audio_paths:
                 self._delete_stored_audio(rel_path)
+            for rel_path in attachment_paths:
+                self._delete_stored_attachment(rel_path)
             return True

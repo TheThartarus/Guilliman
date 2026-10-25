@@ -37,6 +37,7 @@ from .services.experts import ExpertMethods
 from .services.hearings import HearingMethods
 from .services.victims import VictimMethods
 from .services.witnesses import WitnessMethods
+from .services.attachments import AttachmentMethods
 from .services.acting_officials import ActingOfficialMethods
 
 
@@ -48,6 +49,7 @@ class CaseFileService(
     DocumentaryMethods,
     ExpertMethods,
     ActingOfficialMethods,
+    AttachmentMethods,
     HearingMethods,
     BackupMethods,
 ):

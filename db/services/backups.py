@@ -15,14 +15,14 @@ logger = logging.getLogger("guilliman")
 
 # Nombres canónicos dentro del .zip de respaldo completo.
 _ARCHIVE_DB_NAME = "case_files.db"
-_ARCHIVE_AUDIO_DIR = "audios"
+_ARCHIVE_STORE_DIRS = ("audios", "attachments")
 _BACKUP_GLOB = "guilliman_backup_*.zip"
 
 
-def _is_audio_member(name: str) -> bool:
-    """Indica si una entrada del zip pertenece a la carpeta ``audios/``."""
+def _is_stored_member(name: str) -> bool:
+    """Indica si una entrada del zip pertenece a un store local."""
     parts = Path(name).parts
-    return bool(parts) and parts[0] == _ARCHIVE_AUDIO_DIR
+    return bool(parts) and parts[0] in _ARCHIVE_STORE_DIRS
 
 
 def _assert_safe_member(name: str) -> None:
@@ -108,18 +108,20 @@ class BackupMethods(_ServiceMixin):
             dest = Path(dest_zip_path).resolve()
             dest.parent.mkdir(parents=True, exist_ok=True)
         src_db = self._resolve_db_file()
-        audio_dir = get_app_data_dir() / _ARCHIVE_AUDIO_DIR
         # Disponer el engine vacía el WAL y libera el handle del .db (Windows).
         self.close()
         try:
             with zipfile.ZipFile(dest, "w", zipfile.ZIP_DEFLATED) as archive:
                 archive.write(src_db, arcname=_ARCHIVE_DB_NAME)
-                if audio_dir.is_dir():
-                    for file in sorted(audio_dir.rglob("*")):
+                for dir_name in _ARCHIVE_STORE_DIRS:
+                    source_dir = get_app_data_dir() / dir_name
+                    if not source_dir.is_dir():
+                        continue
+                    for file in sorted(source_dir.rglob("*")):
                         if file.is_file():
                             arcname = (
-                                Path(_ARCHIVE_AUDIO_DIR)
-                                / file.relative_to(audio_dir)
+                                Path(dir_name)
+                                / file.relative_to(source_dir)
                             ).as_posix()
                             archive.write(file, arcname=arcname)
         finally:
@@ -150,10 +152,11 @@ class BackupMethods(_ServiceMixin):
                 )
 
     def restore_data(self, src_zip_path: str) -> None:
-        """Restaura la base y la carpeta ``audios/`` desde un respaldo completo.
+        """Restaura la base y los stores locales desde un respaldo completo.
 
         Valida el .zip antes de tocar la base actual; luego cierra el engine,
-        reemplaza el ``.db`` y la carpeta ``audios/``, y reinicia la conexión.
+        reemplaza el ``.db`` y las carpetas ``audios/`` y ``attachments/``, y
+        reinicia la conexión.
 
         Args:
             src_zip_path: Ruta del .zip de respaldo.
@@ -171,24 +174,25 @@ class BackupMethods(_ServiceMixin):
             names = archive.namelist()
             if _ARCHIVE_DB_NAME not in names:
                 raise ValueError("El respaldo no contiene la base de datos.")
-            audio_members = [name for name in names if _is_audio_member(name)]
-            for name in audio_members:
+            stored_members = [name for name in names if _is_stored_member(name)]
+            for name in stored_members:
                 _assert_safe_member(name)
 
         data_dir = get_app_data_dir()
-        audio_dir = data_dir / _ARCHIVE_AUDIO_DIR
         dest_db = self._resolve_db_file()
         self.close()
         dest_db.parent.mkdir(parents=True, exist_ok=True)
         with zipfile.ZipFile(src) as archive:
             with archive.open(_ARCHIVE_DB_NAME) as member, open(dest_db, "wb") as out:
                 shutil.copyfileobj(member, out)
-            # Reemplaza el store completo para no dejar audios huérfanos.
-            if audio_dir.is_dir():
-                shutil.rmtree(audio_dir)
-            audio_dir.mkdir(parents=True, exist_ok=True)
-            for name in audio_members:
-                target = audio_dir / Path(name).relative_to(_ARCHIVE_AUDIO_DIR)
+            # Reemplaza los stores completos para no dejar archivos huérfanos.
+            for dir_name in _ARCHIVE_STORE_DIRS:
+                target_dir = data_dir / dir_name
+                if target_dir.is_dir():
+                    shutil.rmtree(target_dir)
+                target_dir.mkdir(parents=True, exist_ok=True)
+            for name in stored_members:
+                target = data_dir / Path(name)
                 target.parent.mkdir(parents=True, exist_ok=True)
                 with archive.open(name) as member, open(target, "wb") as out:
                     shutil.copyfileobj(member, out)
