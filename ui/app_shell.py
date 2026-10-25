@@ -25,6 +25,7 @@ from ui.agenda_view import AgendaView
 from ui.case_detail_view import CaseDetailView
 from ui.case_form_view import CaseFormView
 from ui.case_search_view import CaseSearchView
+from ui.dashboard_view import DashboardView
 from ui.widgets import show_error, show_info
 
 
@@ -141,6 +142,7 @@ class SettingsView(QWidget):
         # La restauración reemplaza el .db: cerramos vistas dinámicas y refrescamos.
         if self.app.shell is not None:
             self.app.shell._close_all_dynamic_routes()
+            self.app.shell.dashboard_view.refresh()
             self.app.shell.search_view.refresh()
             self.app.shell.agenda_view.refresh()
         show_info(self, "Datos restaurados.")
@@ -159,18 +161,21 @@ class AppShell(FluentWindow):
 
         # Vistas principales (sub-interfaces fijas). addSubInterface usa el
         # objectName del widget como route key.
+        self.dashboard_view = DashboardView(self.app)
         self.search_view = CaseSearchView(self.app)
         self.new_view = CaseFormView(self.app, None)
         self.agenda_view = AgendaView(self.app)
         self.settings_view = SettingsView(self.app)
         self.about_view = AboutView()
 
+        self.dashboard_view.setObjectName("dashboard")
         self.search_view.setObjectName("search")
         self.new_view.setObjectName("new")
         self.agenda_view.setObjectName("agenda")
         self.settings_view.setObjectName("settings")
         self.about_view.setObjectName("about")
 
+        self.addSubInterface(self.dashboard_view, FluentIcon.HOME, "Inicio", NavigationItemPosition.TOP)
         self.addSubInterface(self.search_view, FluentIcon.SEARCH, "Expedientes", NavigationItemPosition.TOP)
         self.addSubInterface(self.new_view, FluentIcon.ADD, "Nuevo", NavigationItemPosition.TOP)
         self.addSubInterface(self.agenda_view, FluentIcon.CALENDAR, "Agenda", NavigationItemPosition.TOP)
@@ -178,11 +183,10 @@ class AppShell(FluentWindow):
         self.addSubInterface(self.settings_view, FluentIcon.SETTING, "Ajustes", NavigationItemPosition.BOTTOM)
 
         self.stackedWidget.currentChanged.connect(self._on_current_changed)
-        self.switchTo(self.search_view)
-        # Carga inicial: al arrancar la pestaña activa ya es Expedientes, pero
-        # currentChanged no se dispara en el primer switchTo, así que refrescamos
-        # explícitamente para que los expedientes aparezcan sin pulsar "Buscar".
-        self.search_view.refresh()
+        self.switchTo(self.dashboard_view)
+        # Carga inicial: currentChanged no se dispara en el primer switchTo,
+        # así que refrescamos el dashboard explícitamente.
+        self.dashboard_view.refresh()
 
         # Sub-interfaces dinámicas abiertas (detalle / edición de expediente).
         self._dynamic: dict[str, QWidget] = {}

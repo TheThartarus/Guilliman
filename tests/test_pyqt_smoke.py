@@ -110,6 +110,7 @@ def test_pyqt_ui_builds() -> None:
 
     shell = app_shell.AppShell(service)
     assert shell.windowTitle().startswith("Guilliman")
+    assert shell.dashboard_view is not None
     assert shell.search_view is not None
     assert shell.new_view is not None
     assert shell.agenda_view is not None
