@@ -43,7 +43,7 @@ from ui.shared import (
     format_datetime,
     translate,
 )
-from ui.widgets import combo_current_data, show_error, show_info
+from ui.widgets import combo_current_data, combo_set_data, show_error, show_info
 
 logger = logging.getLogger("guilliman")
 
@@ -64,7 +64,7 @@ class AgendaView(QWidget):
         layout.setSpacing(12)
         layout.addWidget(SubtitleLabel("Agenda de Audiencias"))
 
-        range_row = QHBoxLayout()
+        filter_row = QHBoxLayout()
         self.start_date = DatePicker()
         self.start_date.setDate(QDate.currentDate())
         apply_spanish_date_picker(self.start_date)
@@ -76,6 +76,22 @@ class AgendaView(QWidget):
         for value, label in HEARING_STATUS_LABELS.items():
             self.status_filter.addItem(label, userData=value)
         self.status_filter.currentIndexChanged.connect(self.refresh)
+        self.pending_filter = ComboBox()
+        self.pending_filter.addItem("Todas", userData="")
+        self.pending_filter.addItem("Sin audio", userData="audio")
+        self.pending_filter.addItem("Sin acta", userData="acta")
+        self.pending_filter.currentIndexChanged.connect(self.refresh)
+        filter_row.addWidget(BodyLabel("Desde:"))
+        filter_row.addWidget(self.start_date, 1)
+        filter_row.addWidget(BodyLabel("Hasta:"))
+        filter_row.addWidget(self.end_date, 1)
+        filter_row.addWidget(BodyLabel("Estado:"))
+        filter_row.addWidget(self.status_filter, 1)
+        filter_row.addWidget(BodyLabel("Pendientes:"))
+        filter_row.addWidget(self.pending_filter, 1)
+        layout.addLayout(filter_row)
+
+        actions_row = QHBoxLayout()
         self.filter_btn = PrimaryPushButton("Filtrar")
         self.filter_btn.clicked.connect(self.refresh)
         self.clear_btn = PushButton("Limpiar filtros")
@@ -84,17 +100,12 @@ class AgendaView(QWidget):
         self.export_btn.clicked.connect(self._on_export)
         self.export_ics_btn = PushButton("Exportar .ics")
         self.export_ics_btn.clicked.connect(self._on_export_ics)
-        range_row.addWidget(BodyLabel("Desde:"))
-        range_row.addWidget(self.start_date, 1)
-        range_row.addWidget(BodyLabel("Hasta:"))
-        range_row.addWidget(self.end_date, 1)
-        range_row.addWidget(BodyLabel("Estado:"))
-        range_row.addWidget(self.status_filter, 1)
-        range_row.addWidget(self.filter_btn)
-        range_row.addWidget(self.clear_btn)
-        range_row.addWidget(self.export_btn)
-        range_row.addWidget(self.export_ics_btn)
-        layout.addLayout(range_row)
+        actions_row.addWidget(self.filter_btn)
+        actions_row.addWidget(self.clear_btn)
+        actions_row.addWidget(self.export_btn)
+        actions_row.addWidget(self.export_ics_btn)
+        actions_row.addStretch(1)
+        layout.addLayout(actions_row)
 
         self.table = TableWidget()
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
@@ -122,6 +133,7 @@ class AgendaView(QWidget):
             show_error(self, f"Error al cargar: {exc}")
             return
 
+        items = self._apply_pending_filter(items)
         self._items = items
         self._rows = [i.hearing_id for i in items]
         self.table.setRowCount(len(items))
@@ -145,11 +157,38 @@ class AgendaView(QWidget):
         self.start_date.setDate(today)
         self.end_date.setDate(today)
         self.status_filter.setCurrentIndex(0)
+        self.pending_filter.setCurrentIndex(0)
         self.refresh()
 
     def _selected_status(self) -> str | None:
         """Retorna el estado seleccionado en el filtro (None = todos)."""
         return combo_current_data(self.status_filter) or None
+
+    def _apply_pending_filter(self, items: list) -> list:
+        """Filtra audiencias por pendiente de audio o de acta."""
+        pending = combo_current_data(self.pending_filter)
+        if pending == "audio":
+            return [item for item in items if not item.has_audio]
+        if pending == "acta":
+            return [item for item in items if not item.has_transcription]
+        return items
+
+    def show_upcoming(self) -> None:
+        """Configura la agenda para las audiencias de los próximos 7 días."""
+        today = QDate.currentDate()
+        self.start_date.setDate(today)
+        self.end_date.setDate(today.addDays(7))
+        self.status_filter.setCurrentIndex(0)
+        combo_set_data(self.pending_filter, "")
+        self.refresh()
+
+    def show_pending(self, kind: str) -> None:
+        """Configura la agenda para audiencias sin audio o sin acta."""
+        self.start_date.setDate(QDate(2000, 1, 1))
+        self.end_date.setDate(QDate(2100, 12, 31))
+        self.status_filter.setCurrentIndex(0)
+        combo_set_data(self.pending_filter, kind)
+        self.refresh()
 
     def _on_row_double(self, row: int, _col: int) -> None:
         """Doble clic en la agenda abre el detalle del expediente asociado."""
@@ -237,6 +276,7 @@ class AgendaView(QWidget):
             datetime.combine(end, datetime.max.time()),
             status=self._selected_status(),
         )
+        items = self._apply_pending_filter(items)
         try:
             export_agenda_pdf(items, start, end, path)
         except Exception as exc:  # noqa: BLE001 - se informa al usuario
@@ -267,6 +307,7 @@ class AgendaView(QWidget):
             datetime.combine(end, datetime.max.time()),
             status=self._selected_status(),
         )
+        items = self._apply_pending_filter(items)
         try:
             export_agenda_ics(items, path)
         except Exception as exc:  # noqa: BLE001 - se informa al usuario

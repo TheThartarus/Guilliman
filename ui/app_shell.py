@@ -47,6 +47,7 @@ class SettingsView(QWidget):
         from qfluentwidgets import (
             BodyLabel,
             ComboBox,
+            LineEdit,
             PushButton,
             SubtitleLabel,
             TitleLabel,
@@ -70,6 +71,13 @@ class SettingsView(QWidget):
         self.theme_combo.currentTextChanged.connect(self._on_theme_changed)
 
         form.addRow(BodyLabel("Tema de la interfaz:"), self.theme_combo)
+
+        self.detention_edit = LineEdit()
+        self.detention_edit.setPlaceholderText("30")
+        self.detention_edit.setText(str(app_settings.load_detention_alert_days()))
+        self.detention_edit.editingFinished.connect(self._save_detention_days)
+        form.addRow(BodyLabel("Alerta de detención (días):"), self.detention_edit)
+
         layout.addWidget(SubtitleLabel("Apariencia"))
         layout.addLayout(form)
 
@@ -102,6 +110,18 @@ class SettingsView(QWidget):
         mode = "DARK" if text == "Oscuro" else "LIGHT"
         setTheme(Theme.DARK if mode == "DARK" else Theme.LIGHT)
         app_settings.save_theme_mode(mode)
+
+    def _save_detention_days(self) -> None:
+        """Valida y persiste el umbral de alerta de detención."""
+        from ui import settings as app_settings
+
+        text = (self.detention_edit.text() or "").strip()
+        try:
+            days = max(1, int(text))
+        except ValueError:
+            days = app_settings.load_detention_alert_days()
+        self.detention_edit.setText(str(days))
+        app_settings.save_detention_alert_days(days)
 
     # ------------------------------------------------------------------ #
     # Respaldo / restauración (B3)

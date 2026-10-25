@@ -24,6 +24,7 @@ from qfluentwidgets import (
 )
 
 from ui import settings as app_settings
+from ui.dialogs import DetentionAlertsDialog
 from ui.shared import (
     HEARING_STATUS_LABELS,
     HEARING_TYPE_LABELS,
@@ -36,10 +37,13 @@ logger = logging.getLogger("guilliman")
 
 
 class _StatCard(CardWidget):
-    """Tarjeta simple con un número grande y una etiqueta."""
+    """Tarjeta con un número grande, una etiqueta y una acción opcional."""
 
-    def __init__(self, label: str, parent: QWidget | None = None) -> None:
+    def __init__(self, label: str, on_click=None, parent: QWidget | None = None) -> None:
         super().__init__(parent)
+        self._on_click = on_click
+        if on_click is not None:
+            self.setCursor(Qt.PointingHandCursor)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(16, 12, 16, 12)
         layout.setSpacing(2)
@@ -49,6 +53,11 @@ class _StatCard(CardWidget):
 
     def set_value(self, value: int) -> None:
         self._value.setText(str(value))
+
+    def mouseReleaseEvent(self, event) -> None:
+        if self._on_click is not None and event.button() == Qt.LeftButton:
+            self._on_click()
+        super().mouseReleaseEvent(event)
 
 
 class DashboardView(QWidget):
@@ -68,15 +77,25 @@ class DashboardView(QWidget):
         layout.addWidget(TitleLabel("Inicio"))
 
         cards = QHBoxLayout()
-        self.cases_card = _StatCard("Expedientes")
-        self.week_card = _StatCard("Audiencias próximas (7 días)")
-        self.no_audio_card = _StatCard("Audiencias sin audio")
-        self.no_acta_card = _StatCard("Audiencias sin acta")
+        self.cases_card = _StatCard("Expedientes", self._open_search)
+        self.week_card = _StatCard(
+            "Audiencias próximas (7 días)", self._open_upcoming
+        )
+        self.no_audio_card = _StatCard(
+            "Audiencias sin audio", lambda: self._open_pending("audio")
+        )
+        self.no_acta_card = _StatCard(
+            "Audiencias sin acta", lambda: self._open_pending("acta")
+        )
+        self.detention_card = _StatCard(
+            "Alertas de detención", self._open_detention
+        )
         for card in (
             self.cases_card,
             self.week_card,
             self.no_audio_card,
             self.no_acta_card,
+            self.detention_card,
         ):
             cards.addWidget(card, 1)
         layout.addLayout(cards)
@@ -107,6 +126,8 @@ class DashboardView(QWidget):
             )
             missing_audio = self.app.service.count_hearings_missing_audio()
             missing_acta = self.app.service.count_hearings_missing_transcription()
+            threshold = app_settings.load_detention_alert_days()
+            detention_alerts = self.app.service.list_detention_alerts(threshold)
         except ValueError as exc:
             logger.exception("Error al cargar el dashboard")
             show_error(self, f"Error al cargar el inicio: {exc}")
@@ -116,6 +137,7 @@ class DashboardView(QWidget):
         self.week_card.set_value(len(upcoming))
         self.no_audio_card.set_value(missing_audio)
         self.no_acta_card.set_value(missing_acta)
+        self.detention_card.set_value(len(detention_alerts))
 
         self._update_backup_label()
 
@@ -138,6 +160,24 @@ class DashboardView(QWidget):
             self.table.setItem(
                 row, 5, QTableWidgetItem("Sí" if item.has_audio else "—")
             )
+
+    def _open_search(self) -> None:
+        self.app.shell.switchTo(self.app.shell.search_view)
+        self.app.shell.search_view.refresh()
+
+    def _open_upcoming(self) -> None:
+        self.app.shell.agenda_view.show_upcoming()
+        self.app.shell.switchTo(self.app.shell.agenda_view)
+
+    def _open_pending(self, kind: str) -> None:
+        self.app.shell.agenda_view.show_pending(kind)
+        self.app.shell.switchTo(self.app.shell.agenda_view)
+
+    def _open_detention(self) -> None:
+        threshold = app_settings.load_detention_alert_days()
+        dialog = DetentionAlertsDialog(self, self.app, threshold)
+        if dialog.exec() and dialog.selected_case_id is not None:
+            self.app.shell.open_case_detail(dialog.selected_case_id)
 
     def _update_backup_label(self) -> None:
         """Muestra la antigüedad del último respaldo y avisa si conviene hacer uno."""

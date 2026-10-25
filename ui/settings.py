@@ -17,6 +17,8 @@ _DEFAULT = "LIGHT"
 _LAST_BACKUP_KEY = "last_backup_at"
 _SEARCH_FILTERS_KEY = "search_filters"
 _WINDOW_STATE_KEY = "window_state"
+_DETENTION_KEY = "detention_alert_days"
+_DEFAULT_DETENTION_DAYS = 30
 
 
 def get_settings_path() -> Path:
@@ -126,4 +128,21 @@ def save_window_state(maximized: bool, width: int, height: int) -> None:
         "width": int(width),
         "height": int(height),
     }
+    _write_data(data)
+
+
+def load_detention_alert_days() -> int:
+    """Días de detención a partir de los cuales se muestra una alerta."""
+    value = _read_data().get(_DETENTION_KEY)
+    try:
+        days = int(value)
+    except (TypeError, ValueError):
+        return _DEFAULT_DETENTION_DAYS
+    return max(1, days)
+
+
+def save_detention_alert_days(days: int) -> None:
+    """Persiste el umbral de alerta de detención (mínimo 1 día)."""
+    data = _read_data()
+    data[_DETENTION_KEY] = max(1, int(days))
     _write_data(data)

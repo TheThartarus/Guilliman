@@ -40,3 +40,6 @@ def test_search_filters_and_window_state_roundtrip(tmp_path, monkeypatch) -> Non
         "width": 1000,
         "height": 700,
     }
+
+    settings.save_detention_alert_days(45)
+    assert settings.load_detention_alert_days() == 45
