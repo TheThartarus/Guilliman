@@ -39,7 +39,7 @@ from db import CaseFileRead
 from ui.dialogs import confirm_delete, pick_save_pdf
 from ui.exporters import export_cases_csv, export_cases_pdf
 from ui.shared import (
-    DEFENDANT_STATUS_LABELS,
+    CRIME_TYPE_OPTIONS,
     DEFENDANT_STATUS_OPTIONS,
     VERDICT_STATUS_DOMAIN,
     VERDICT_STATUS_OPTIONS,
@@ -90,12 +90,18 @@ class CaseSearchView(QWidget):
         self.verdict_status.addItem("Cualquiera", userData="")
         for opt in VERDICT_STATUS_OPTIONS:
             self.verdict_status.addItem(opt, userData=opt)
+        self.crime_type = ComboBox()
+        self.crime_type.addItem("Cualquiera", userData="")
+        for opt in CRIME_TYPE_OPTIONS:
+            self.crime_type.addItem(opt, userData=opt)
         row1.addWidget(BodyLabel("Texto:"))
-        row1.addWidget(self.query, 3)
+        row1.addWidget(self.query, 2)
         row1.addWidget(BodyLabel("Estado acusado:"))
         row1.addWidget(self.defendant_status, 1)
         row1.addWidget(BodyLabel("Veredicto:"))
         row1.addWidget(self.verdict_status, 1)
+        row1.addWidget(BodyLabel("Tipo de Delito:"))
+        row1.addWidget(self.crime_type, 1)
         f_layout.addLayout(row1)
 
         # Fila 2: nombres de personas (substring, insensible a mayúsculas en db).
@@ -170,6 +176,7 @@ class CaseSearchView(QWidget):
         self.query.clear()
         self.defendant_status.setCurrentIndex(0)
         self.verdict_status.setCurrentIndex(0)
+        self.crime_type.setCurrentIndex(0)
         self.defendant_name.clear()
         self.victim_name.clear()
         self.witness_name.clear()
@@ -188,6 +195,7 @@ class CaseSearchView(QWidget):
         defendant_name = (self.defendant_name.text() or "").strip() or None
         victim_name = (self.victim_name.text() or "").strip() or None
         witness_name = (self.witness_name.text() or "").strip() or None
+        crime_type = combo_current_data(self.crime_type) or None
 
         # Obtener total para paginación.
         self._total = self.app.service.count_case_files(
@@ -197,6 +205,7 @@ class CaseSearchView(QWidget):
             witness_name=witness_name,
             defendant_status=defendant_status,
             verdict_status=verdict_status,
+            crime_type=crime_type,
         )
         max_page = max(0, (self._total - 1) // self._page_size)
         self._page = min(self._page, max_page)
@@ -212,6 +221,7 @@ class CaseSearchView(QWidget):
                 witness_name=witness_name,
                 defendant_status=defendant_status,
                 verdict_status=verdict_status,
+                crime_type=crime_type,
             )
         except ValueError as exc:
             logger.exception("Error al buscar expedientes")

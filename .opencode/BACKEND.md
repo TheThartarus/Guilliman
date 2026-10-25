@@ -87,9 +87,9 @@ Persistence + business logic. Pure Python (SQLAlchemy 2.0 + SQLite, pydantic). N
   `update_case_file(id, data) -> bool`, `delete_case_file(id) -> bool`.
 - `search_case_files` accepts combinable filters (all optional, AND logic):
   `query` (free text on case_number / MP ref), `defendant_name`, `victim_name`,
-  `witness_name` (LIKE substring), `defendant_status`, `verdict_status` (exact match),
-  `indictment_date_from/to`, `hearing_from/to` (date ranges). Empty `query` returns
-  all matching records.
+  `witness_name` (LIKE substring), `defendant_status`, `verdict_status`,
+  `crime_type` (exact match), `indictment_date_from/to`, `hearing_from/to`
+  (date ranges). Empty `query` returns all matching records.
 - Children — each exposes `add_* -> int`, `update_* -> bool`, `delete_* -> bool`:
   defendants, victims, witnesses, documentaries, experts, hearings. Hearings also expose
   `update_hearing_status(...)`.

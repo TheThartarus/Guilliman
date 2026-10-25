@@ -57,6 +57,14 @@ ORIGIN_TYPE_LABELS: dict[str, str] = {
     "TPM": "TPM",
 }
 
+# Tipos de delito ofrecidos en los formularios y en la búsqueda.
+CRIME_TYPE_OPTIONS: list[str] = [
+    "Ordinario",
+    "Violencia",
+    "Droga",
+    "Armas",
+]
+
 HEARING_STATUS_LABELS: dict[str, str] = {
     "Scheduled": "Programada",
     "Completed": "Realizada",
