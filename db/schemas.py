@@ -435,3 +435,5 @@ class ScheduledHearingItem(BaseModel):
     hearing_type: str | None = None
     status: str
     notes: str | None = None
+    has_audio: bool = False
+    has_transcription: bool = False

@@ -7,7 +7,7 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from ..database import get_app_data_dir, session_scope
 from ..exceptions import CaseFileNotFoundError
@@ -91,9 +91,31 @@ class HearingMethods(_ServiceMixin):
                         hearing_type=hearing.hearing_type,
                         status=hearing.status,
                         notes=hearing.notes,
+                        has_audio=bool(hearing.audio_path),
+                        has_transcription=bool(hearing.transcription),
                     )
                 )
         return items
+
+    def count_hearings_missing_audio(self) -> int:
+        """Cuenta las audiencias sin archivo de audio asociado."""
+        statement = (
+            select(func.count())
+            .select_from(HearingSchedule)
+            .where(HearingSchedule.audio_path.is_(None))
+        )
+        with session_scope(self._db_path) as session:
+            return session.execute(statement).scalar_one()
+
+    def count_hearings_missing_transcription(self) -> int:
+        """Cuenta las audiencias sin acta/transcripción registrada."""
+        statement = (
+            select(func.count())
+            .select_from(HearingSchedule)
+            .where(HearingSchedule.transcription.is_(None))
+        )
+        with session_scope(self._db_path) as session:
+            return session.execute(statement).scalar_one()
 
     def add_hearing(self, case_file_id: int, hearing_data: HearingScheduleCreate) -> int:
         """Agrega una audiencia a un expediente existente.
