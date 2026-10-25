@@ -6,7 +6,7 @@ from datetime import date
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from db import CaseFileCreate, CaseFileService  # noqa: E402
+from db import CaseFileCreate, CaseFileService, CrimeCreate  # noqa: E402
 from db.database import dispose_engine, reset_session_factory  # noqa: E402
 
 
@@ -23,8 +23,9 @@ def test_search_by_crime_type(tmp_path, monkeypatch) -> None:
             ("A-3", "Violencia"),
             ("A-4", None),
         ):
+            crimes = [CrimeCreate(crime_type=crime_type)] if crime_type else []
             service.create_case_file(
-                CaseFileCreate(case_number=case_number, crime_type=crime_type)
+                CaseFileCreate(case_number=case_number), crimes_list=crimes
             )
 
         # Filtro exacto por tipo de delito.

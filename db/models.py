@@ -59,14 +59,10 @@ class CaseFile(Base):
     origin_location: Mapped[str | None] = mapped_column(String(100))
     location: Mapped[str | None] = mapped_column(String(100))
 
-    # Campos adicionales para clasificación de delitos.
+    # Campos adicionales de clasificación del expediente (los delitos viven en
+    # la tabla ``crimes``).
     is_emblematic: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     pseudonym: Mapped[str | None] = mapped_column(String(100))
-    crime_type: Mapped[str | None] = mapped_column(String(50))  # Ordinario, Violencia, Droga, Armas
-    drug_quantity: Mapped[float | None] = mapped_column(Float)  # Cantidad/peso de droga incautada
-    drug_type: Mapped[str | None] = mapped_column(String(50))  # Marihuana, Cocaína, Crack, Metanfetamina, LSD, Heroína
-    weapon_quantity: Mapped[int | None] = mapped_column(Integer)  # N° de armas incautadas
-    weapon_type: Mapped[str | None] = mapped_column(String(50))  # Arma de Fuego, Arma Blanca, etc.
     piece_count: Mapped[int | None] = mapped_column(Integer)  # N° de piezas del expediente
 
     # Archivo lógico (soft delete): NULL = activo, fecha = archivado.
@@ -128,6 +124,12 @@ class CaseFile(Base):
         lazy="selectin",
     )
     attachments: Mapped[list["Attachment"]] = relationship(
+        back_populates="case_file",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        lazy="selectin",
+    )
+    crimes: Mapped[list["Crime"]] = relationship(
         back_populates="case_file",
         cascade="all, delete-orphan",
         passive_deletes=True,
@@ -339,3 +341,24 @@ class Attachment(Base):
 
     def __repr__(self) -> str:
         return f"<Attachment id={self.id} name={self.name!r}>"
+
+
+class Crime(Base):
+    """Un delito imputado en un expediente (tabla: ``crimes``)."""
+
+    __tablename__ = "crimes"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    case_file_id: Mapped[int] = mapped_column(
+        ForeignKey("case_files.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    crime_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    drug_quantity: Mapped[float | None] = mapped_column(Float)
+    drug_type: Mapped[str | None] = mapped_column(String(50))
+    weapon_quantity: Mapped[int | None] = mapped_column(Integer)
+    weapon_type: Mapped[str | None] = mapped_column(String(50))
+
+    case_file: Mapped[CaseFile] = relationship(back_populates="crimes")
+
+    def __repr__(self) -> str:
+        return f"<Crime id={self.id} crime_type={self.crime_type!r}>"

@@ -12,6 +12,7 @@ from ..database import session_scope
 from ..exceptions import CaseFileNotFoundError, DuplicateCaseNumberError
 from ..models import (
     CaseFile,
+    Crime,
     Defendant,
     Documentary,
     Expert,
@@ -23,6 +24,7 @@ from ..schemas import (
     CaseFileCreate,
     CaseFileRead,
     CaseFileUpdate,
+    CrimeCreate,
     DefendantCreate,
     DocumentaryCreate,
     ExpertCreate,
@@ -33,6 +35,9 @@ from ..schemas import (
 from ._base import _ServiceMixin
 
 logger = logging.getLogger("guilliman")
+
+
+
 
 
 class CaseFileMethods(_ServiceMixin):
@@ -87,7 +92,8 @@ class CaseFileMethods(_ServiceMixin):
             sub = select(Defendant.case_file_id).where(Defendant.verdict_status == verdict_status)
             statement = statement.where(CaseFile.id.in_(sub))
         if crime_type is not None:
-            statement = statement.where(CaseFile.crime_type == crime_type)
+            sub = select(Crime.case_file_id).where(Crime.crime_type == crime_type)
+            statement = statement.where(CaseFile.id.in_(sub))
         if origin_location:
             statement = statement.where(
                 CaseFile.origin_location.ilike(f"%{origin_location.strip()}%")
@@ -251,6 +257,7 @@ class CaseFileMethods(_ServiceMixin):
     def create_case_file(
         self,
         case_file_data: CaseFileCreate,
+        crimes_list: list[CrimeCreate] | None = None,
         defendants_list: list[DefendantCreate] | None = None,
         victims_list: list[VictimCreate] | None = None,
         witnesses_list: list[WitnessCreate] | None = None,
@@ -269,6 +276,8 @@ class CaseFileMethods(_ServiceMixin):
         """
         with session_scope(self._db_path) as session:
             case_file = CaseFile(**case_file_data.model_dump())
+            for crime_data in crimes_list or []:
+                case_file.crimes.append(Crime(**crime_data.model_dump()))
             for defendant_data in defendants_list or []:
                 case_file.defendants.append(Defendant(**defendant_data.model_dump()))
             for victim_data in victims_list or []:

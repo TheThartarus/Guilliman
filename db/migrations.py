@@ -1,11 +1,10 @@
 """
-Guilliman Backend - Mecanismo de migraciones extensible (stub).
+Guilliman Backend - Mecanismo de migraciones extensible.
 
 El esquema de la base de datos se define en ``models.py`` y se crea con
-``Base.metadata.create_all()`` dentro de ``init_db()``. Las modificaciones de
-esquema aplicadas durante el desarrollo (nuevas columnas) y la traducción de
-datos legacy en ingles fueron consolidadas en los modelos, y la base de
-desarrollo se reinicio; por eso ``MIGRATIONS`` arranca vacio.
+``Base.metadata.create_all()`` dentro de ``init_db()``. La aplicación aún no está
+en producción, por lo que los cambios de esquema se aplican recreando la base en
+frío; ``MIGRATIONS`` arranca vacío.
 
 Este modulo se mantiene como andamiaje funcional para EVOLUCIONAR bases ya
 existentes cuando el proyecto se despliegue (o cambie el modelo y exista una
@@ -14,9 +13,9 @@ base con datos que no se quiera borrar). Cada migracion es una funcion
 mayores a las registradas en ``schema_version``.
 
 Para agregar una migracion futura:
-    1. Define ``def _migration_005_xxx(session: Session) -> None: ...`` usando
+    1. Define ``def _migration_001_xxx(session: Session) -> None: ...`` usando
        ``_column_exists`` / ``_table_exists`` para hacer ALTER idempotentes.
-    2. Registrala: ``MIGRATIONS[5] = _migration_005_xxx``.
+    2. Registrala: ``MIGRATIONS[1] = _migration_001_xxx``.
 Nunca edites una migracion ya liberada; agrega una nueva entrada.
 """
 
@@ -97,8 +96,8 @@ def sync_missing_columns(engine: Engine, metadata) -> list[str]:
     return added
 
 
-# Registro global de migraciones: {version: funcion}. Vacio por defecto; el
-# esquema actual vive en models.py. Agregar aqui las futuras migraciones.
+# Registro global de migraciones: {version: funcion}. Vacio: el esquema actual
+# vive en models.py y la base se crea en frío con ``create_all``.
 MIGRATIONS: dict[int, callable] = {}
 
 

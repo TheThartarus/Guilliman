@@ -31,10 +31,12 @@ from .migrations import apply_migrations, sync_missing_columns
 from .models import Base
 from .services.backups import BackupMethods
 from .services.case_files import CaseFileMethods
+from .services.crimes import CrimeMethods
 from .services.defendants import DefendantMethods
 from .services.documentaries import DocumentaryMethods
 from .services.experts import ExpertMethods
 from .services.hearings import HearingMethods
+from .services.statistics import StatisticsMethods
 from .services.victims import VictimMethods
 from .services.witnesses import WitnessMethods
 from .services.attachments import AttachmentMethods
@@ -43,6 +45,7 @@ from .services.acting_officials import ActingOfficialMethods
 
 class CaseFileService(
     CaseFileMethods,
+    CrimeMethods,
     DefendantMethods,
     VictimMethods,
     WitnessMethods,
@@ -51,6 +54,7 @@ class CaseFileService(
     ActingOfficialMethods,
     AttachmentMethods,
     HearingMethods,
+    StatisticsMethods,
     BackupMethods,
 ):
     """Fachada de servicio de alto nivel para la aplicación Guilliman.

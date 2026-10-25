@@ -323,6 +323,33 @@ class HearingScheduleRead(BaseModel):
 
 
 # --------------------------------------------------------------------------- #
+# Delitos por expediente
+# --------------------------------------------------------------------------- #
+class CrimeCreate(BaseModel):
+    """Carga de entrada para un delito imputado."""
+
+    crime_type: CrimeTypeValue
+    drug_quantity: float | None = None
+    drug_type: DrugTypeValue | None = None
+    weapon_quantity: int | None = None
+    weapon_type: WeaponTypeValue | None = None
+
+
+class CrimeRead(BaseModel):
+    """Representación de un delito imputado devuelta al frontend."""
+
+    id: int
+    case_file_id: int
+    crime_type: str
+    drug_quantity: float | None = None
+    drug_type: str | None = None
+    weapon_quantity: int | None = None
+    weapon_type: str | None = None
+
+    model_config = {"from_attributes": True}
+
+
+# --------------------------------------------------------------------------- #
 # Documentos adjuntos
 # --------------------------------------------------------------------------- #
 class AttachmentCreate(BaseModel):
@@ -370,14 +397,9 @@ class CaseFileCreate(BaseModel):
     # Procedencia y ubicación.
     origin_location: str | None = Field(None, max_length=100)
     location: str | None = Field(None, max_length=100)
-    # Campos adicionales para clasificación de delitos.
+    # Campos adicionales de clasificación del expediente.
     is_emblematic: bool = False
     pseudonym: str | None = Field(None, max_length=100)
-    crime_type: CrimeTypeValue | None = None
-    drug_quantity: float | None = None
-    drug_type: DrugTypeValue | None = None
-    weapon_quantity: int | None = None
-    weapon_type: WeaponTypeValue | None = None
     piece_count: int | None = None
 
 
@@ -405,14 +427,9 @@ class CaseFileUpdate(BaseModel):
     # Procedencia y ubicación.
     origin_location: str | None = Field(None, max_length=100)
     location: str | None = Field(None, max_length=100)
-    # Campos adicionales para clasificación de delitos.
+    # Campos adicionales de clasificación del expediente.
     is_emblematic: bool | None = None
     pseudonym: str | None = Field(None, max_length=100)
-    crime_type: CrimeTypeValue | None = None
-    drug_quantity: float | None = None
-    drug_type: DrugTypeValue | None = None
-    weapon_quantity: int | None = None
-    weapon_type: WeaponTypeValue | None = None
     piece_count: int | None = None
 
 
@@ -441,14 +458,9 @@ class CaseFileRead(BaseModel):
     # Procedencia y ubicación.
     origin_location: str | None = None
     location: str | None = None
-    # Campos adicionales para clasificación de delitos.
+    # Campos adicionales de clasificación del expediente.
     is_emblematic: bool = False
     pseudonym: str | None = None
-    crime_type: str | None = None
-    drug_quantity: float | None = None
-    drug_type: str | None = None
-    weapon_quantity: int | None = None
-    weapon_type: str | None = None
     piece_count: int | None = None
     archived_at: datetime | None = None
     created_at: datetime | None = None
@@ -461,6 +473,7 @@ class CaseFileRead(BaseModel):
     acting_officials: list[ActingOfficialRead] = []
     hearings: list[HearingScheduleRead] = []
     attachments: list[AttachmentRead] = []
+    crimes: list[CrimeRead] = []
 
     model_config = {"from_attributes": True}
 
@@ -494,3 +507,21 @@ class AudioIntegrityIssue(BaseModel):
     audio_path: str
     audio_filename: str | None = None
     reason: str  # "missing" | "outside_store"
+
+
+class CountItem(BaseModel):
+    """Par etiqueta/recuento para reportes estadísticos."""
+
+    label: str
+    count: int
+
+
+class StatisticsSummary(BaseModel):
+    """Resumen estadístico del sistema para la vista y los reportes."""
+
+    total_cases: int
+    active_cases: int
+    archived_cases: int
+    cases_by_crime_type: list[CountItem] = []
+    cases_by_prosecutor: list[CountItem] = []
+    hearings_by_month: list[CountItem] = []
