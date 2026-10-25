@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import shutil
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from sqlalchemy import func, select
@@ -231,6 +231,30 @@ class HearingMethods(_ServiceMixin):
                 hearing.notes = notes
             session.add(hearing)
             return True
+
+    def duplicate_hearing(self, hearing_id: int, days: int = 7) -> int | None:
+        """Duplica una audiencia programándola ``days`` días después.
+
+        Copia tipo y notas; el estado vuelve a ``Scheduled`` y no copia audio
+        ni acta (son propios de la audiencia original).
+
+        Returns:
+            El ID de la nueva audiencia, o ``None`` si la original no existe.
+        """
+        with session_scope(self._db_path) as session:
+            original = session.get(HearingSchedule, hearing_id)
+            if original is None:
+                return None
+            copy = HearingSchedule(
+                case_file_id=original.case_file_id,
+                scheduled_at=original.scheduled_at + timedelta(days=days),
+                hearing_type=original.hearing_type,
+                status="Scheduled",
+                notes=original.notes,
+            )
+            session.add(copy)
+            session.flush()
+            return copy.id
 
     def delete_hearing(self, hearing_id: int) -> bool:
         """Elimina una audiencia individual por su clave primaria.

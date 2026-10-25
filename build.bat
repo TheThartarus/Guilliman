@@ -34,6 +34,7 @@ echo [Guilliman] Usando Python: %RUN%
   --hidden-import qfluentwidgets ^
   --hidden-import qframelesswindow ^
   --hidden-import reportlab ^
+  --hidden-import PyQt5.QtPrintSupport ^
   --collect-all qfluentwidgets ^
   --collect-all qframelesswindow ^
   main.py

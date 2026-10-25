@@ -28,6 +28,7 @@ from ui.dialogs import (
     pick_save_pdf,
 )
 from ui.exporters import export_hearing_minutes_pdf, export_hearing_minutes_rtf
+from ui.printing import print_hearing_minutes
 from ui.shared import (
     HEARING_STATUS_LABELS,
     HEARING_TYPE_LABELS,
@@ -131,6 +132,25 @@ class _HearingsSection:
         if dialog.exec():
             self.load()
 
+    def _duplicate_hearing(self, hearing) -> None:
+        if not confirm_delete(
+            self,
+            "¿Duplicar esta audiencia 7 días después? Se copiarán tipo y notas; "
+            "el audio y el acta no se copian.",
+        ):
+            return
+        try:
+            new_id = self.app.service.duplicate_hearing(hearing.id)
+        except ValueError as exc:
+            logger.exception("Error al duplicar audiencia %s", hearing.id)
+            show_error(self, f"Error al duplicar: {exc}")
+            return
+        if new_id is None:
+            show_error(self, "La audiencia no existe.")
+            return
+        show_info(self, "Audiencia duplicada (+7 días).")
+        self.load()
+
     def _on_hearing_context_menu(self, pos) -> None:
         """Menú contextual: editar el acta y abrir el audio de la audiencia."""
         row = self.hearings_table.rowAt(pos.y())
@@ -143,12 +163,18 @@ class _HearingsSection:
             return
         menu = QMenu(self.hearings_table)
         menu.addAction("Editar acta", lambda: self._open_transcription(hearing))
+        menu.addAction(
+            "Duplicar (+7 días)", lambda: self._duplicate_hearing(hearing)
+        )
         if hearing.transcription:
             menu.addAction(
                 "Exportar acta (PDF)", lambda: self._export_minutes(hearing, "pdf")
             )
             menu.addAction(
                 "Exportar acta (RTF)", lambda: self._export_minutes(hearing, "rtf")
+            )
+            menu.addAction(
+                "Imprimir acta", lambda: self._print_minutes(hearing)
             )
         if hearing.audio_path:
             menu.addAction(
@@ -182,6 +208,19 @@ class _HearingsSection:
             show_error(self, f"Error al exportar el acta: {exc}")
             return
         show_info(self, "Acta exportada.")
+
+    def _print_minutes(self, hearing) -> None:
+        """Envía el acta directamente a la impresora (QPrintDialog)."""
+        if self._case is None:
+            return
+        try:
+            printed = print_hearing_minutes(self, self._case, hearing)
+        except Exception as exc:  # noqa: BLE001 - se informa al usuario
+            logger.exception("Error al imprimir el acta de la audiencia %s", hearing.id)
+            show_error(self, f"Error al imprimir el acta: {exc}")
+            return
+        if printed:
+            show_info(self, "Acta enviada a la impresora.")
 
     def _open_hearing_audio(self, rel_path: str) -> None:
         abs_path = self.app.service.get_audio_abs_path(rel_path)
