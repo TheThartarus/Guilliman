@@ -59,8 +59,8 @@ Compact guidance for agents working in this repo. Signals only.
   imports `greenlet`). Do NOT build with 3.13-32, and do not `pip install -r requirements.txt`
   on a 32-bit interpreter (it would try to compile `greenlet` from source and fail).
 - PyInstaller needs the `--hidden-import` flags already in `build.bat`
-  (`qfluentwidgets`, `qframelesswindow`, `reportlab`). If you add a new runtime import,
-  add its `--hidden-import` or the frozen exe fails at startup.
+  (`qfluentwidgets`, `qframelesswindow`, `reportlab`, `PyQt5.QtPrintSupport`). If you
+  add a new runtime import, add its `--hidden-import` or the frozen exe fails at startup.
 - **Migrations** are sequential integer versions in `db/migrations.py`, applied by
   `init_db()` only for versions newer than the recorded `schema_version`. Never edit a
   released migration; append a new entry to `MIGRATIONS` instead.

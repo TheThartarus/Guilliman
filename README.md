@@ -22,24 +22,28 @@ Aplicación de escritorio nativa para Windows diseñada para la gestión integra
   - **Víctimas y testigos** — Nombre, cédula, dirección, teléfono y notas.
   - **Peritos** — Nombre, comparecencia y fecha.
   - **Pruebas documentales** — Nombre, estado (en posesión / evacuada) con fechas.
-- **Agenda de audiencias** — Calendario con tipo, estado y notas por audiencia.
-  Exportable a PDF y a iCalendar (`.ics`) para importar en Outlook/Google Calendar.
-- **Búsqueda instantánea** — Los filtros de expedientes se aplican automáticamente
-  mientras se escribe (sin pulsar "Buscar"); los resultados pueden ordenarse haciendo
-  clic en los encabezados de columna.
+- **Agenda de audiencias** — Calendario con tipo, estado y notas por audiencia; filtro
+  por fecha y estado. Exportable a PDF y a iCalendar (`.ics`) con recordatorio 1 día antes
+  para importar en Outlook/Google Calendar.
+- **Búsqueda instantánea** — Por número, MP, descripción, hechos y ubicación, con filtros
+  de estado, veredicto, tipo de delito, nombres, rango de fechas y procedencia. Se aplica
+  mientras se escribe, recuerda los filtros entre sesiones y permite ordenar por columna.
 - **Audios de audiencias** — Adjunta la grabación de cada audiencia; el archivo se copia
   al equipo local para no depender del teléfono. Permite abrir/reproducir el audio desde
   el detalle del expediente.
-- **Acta por audiencia** — Redacta o pega la transcripción de cada audiencia y expórtala
-  a PDF (para imprimir) o RTF (editable en Word). La tabla de audiencias indica cuáles
-  ya tienen acta.
+- **Acta por audiencia** — Redacta o pega la transcripción de cada audiencia (con
+  autoguardado) y expórtala a PDF (para imprimir), RTF (editable en Word) o imprímela
+  directamente. La tabla de audiencias indica cuáles ya tienen acta.
+- **Duplicar audiencia** — Copia tipo y notas y la reprograma 7 días después, para las
+  continuaciones.
 - **Búsqueda de expedientes** — Por número, fiscalía u otros criterios.
 - **Exportación a PDF** — Del expediente individual y de la agenda completa (reportlab).
 - **Respaldo completo** — Un solo `.zip` con la base de datos y todos los audios (Ajustes).
   El "Respaldo rápido" rota automáticamente y conserva los últimos 10.
 - **Verificación de audios** — Detecta audios referenciados que faltan en disco o que
   apuntan fuera del almacén local (Ajustes → "Verificar audios").
-- **Tema claro / oscuro** — Persistente entre sesiones (sección Ajustes).
+- **Tema claro / oscuro** — Persistente entre sesiones (sección Ajustes). La ventana
+  recuerda su tamaño y si estaba maximizada.
 - **Normalización automática** — Campos de entrada en MAYÚSCULAS.
 
 ---

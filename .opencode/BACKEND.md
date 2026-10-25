@@ -96,17 +96,19 @@ Persistence + business logic. Pure Python (SQLAlchemy 2.0 + SQLite, pydantic). N
   `search_case_files(...)`, `get_case_file_by_id(id) -> CaseFileRead | None`,
   `update_case_file(id, data) -> bool`, `delete_case_file(id) -> bool`.
 - `search_case_files` accepts combinable filters (all optional, AND logic):
-  `query` (free text on case_number / MP ref), `defendant_name`, `victim_name`,
-  `witness_name` (LIKE substring), `defendant_status`, `verdict_status`,
-  `crime_type` (exact match), `indictment_date_from/to`, `hearing_from/to`
-  (date ranges), and `include_archived` (default `False` excludes archived rows).
+  `query` (free text on case_number, MP ref, offense description, facts summary and
+  location), `defendant_name`, `victim_name`, `witness_name` (LIKE substring),
+  `defendant_status`, `verdict_status`, `crime_type` (exact match), `origin_location`
+  (LIKE), `indictment_date_from/to`, `hearing_from/to` (date ranges), and
+  `include_archived` (default `False` excludes archived rows).
   Empty `query` returns all matching records.
 - Case file lifecycle: `archive_case_file(id)` / `unarchive_case_file(id)` toggle
   `archived_at`. Both return `False` if the record is missing or already in that state.
   `delete_case_file(id)` remains the permanent delete.
 - Children — each exposes `add_* -> int`, `update_* -> bool`, `delete_* -> bool`:
   defendants, victims, witnesses, documentaries, experts, hearings. Hearings also expose
-  `update_hearing_status(...)`, `count_hearings_missing_audio()` and
+  `update_hearing_status(...)`, `duplicate_hearing(hearing_id, days=7)` (copies type
+  and notes, resets status, omits audio/acta), `count_hearings_missing_audio()` and
   `count_hearings_missing_transcription()` (dashboard counters).
 - Hearing audio: `store_audio_file(src_path) -> (rel_path, filename)` copies the file
   into `<data_dir>/audios/` with a unique name and returns the DB-relative path;

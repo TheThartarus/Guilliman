@@ -16,21 +16,23 @@ Desktop UI: PyQt5 + qfluentwidgets (FluentWindow). Windows-only, 32-bit target.
   records the timestamp.
 - `dashboard_view.py` — "Inicio": stat cards (cases, upcoming 7 days, hearings missing
   audio/acta), last-backup age line, and a table of the next 7 days. Default view.
-- `case_search_view.py` — search / list of case files; filters run automatically with a
-  300 ms debounce (`_schedule_search`). Results are sortable; row→case mapping uses
-  `Qt.UserRole` on the ID item (`_case_id_at`), so sorting never desaligns actions.
-  A "Incluir archivados" checkbox exposes archived rows; the context menu offers
+- `case_search_view.py` — search / list of case files; filters (text, status, verdict,
+  crime type, names, accusation date range, origin, archived) run automatically with a
+  300 ms debounce and are persisted in `settings.json`. Results are sortable; row→case
+  mapping uses `Qt.UserRole` on the ID item (`_case_id_at`), so sorting never desaligns
+  actions. A "Incluir archivados" checkbox exposes archived rows; the context menu offers
   Archivar (active) or Restaurar / Eliminar definitivamente (archived).
 - `case_form_view.py` — create / edit form for a case file and its child entities.
 - `case_detail_view/` — read-only detail of a case file (package, not single file).
   Split into mixins per entity: `_defendants.py`, `_victims.py`, `_witnesses.py`,
   `_documentaries.py`, `_experts.py`, `_hearings.py`. All combined in
   `CaseDetailView` via multiple inheritance. `_hearings.py` shows "Acta" and "Audio"
-  columns, an "Acta" button, and a context menu with edit acta, export acta (PDF/RTF)
-  and open audio (resolved via `service.get_audio_abs_path`). The header has an
-  Archivar/Restaurar button; editing is disabled for archived cases.
-- `agenda_view.py` — calendar / agenda of scheduled hearings; exports PDF and iCalendar
-  (`.ics`).
+  columns, an "Acta" button, and a context menu with edit acta, duplicate (+7 days),
+  export acta (PDF/RTF), print acta and open audio (resolved via
+  `service.get_audio_abs_path`). The header has an Archivar/Restaurar button; editing is
+  disabled for archived cases.
+- `agenda_view.py` — calendar / agenda of scheduled hearings; filters by date range and
+  status; exports PDF and iCalendar (`.ics`, with a 1-day `VALARM` reminder).
 - `settings.py` — theme persistence (light / dark) to `settings.json`.
 - `dialogs/` — entity dialogs, split into private modules:
   `_defendant.py` (`DefendantDialog`), `_person.py` (`VictimDialog`, `WitnessDialog`),
@@ -40,8 +42,11 @@ Desktop UI: PyQt5 + qfluentwidgets (FluentWindow). Windows-only, 32-bit target.
   `_sizes.py` (dialog dimension constants). All re-exported from `dialogs/__init__.py`.
   `HearingDialog` also attaches audio: it copies the file (via `service.store_audio_file`)
   only on save, so cancelling leaves no orphan, and can open/clear an existing audio.
-  `HearingTranscriptionDialog` edits the acta verbatim (no uppercasing/character filtering).
+  `HearingTranscriptionDialog` edits the acta verbatim (no uppercasing/character
+  filtering) and autosaves to the DB after a 1.5 s pause; closing flushes pending changes.
 - `exporters.py` — PDF generation (reportlab), pure (no PyQt dependency).
+- `printing.py` — direct printing of hearing minutes via `QTextDocument` + `QPrinter`
+  (`print_hearing_minutes`), with an HTML builder kept pure/testable.
 - `shared.py` — pure helpers (labels, date format/parse, validators, uppercase + input
   restriction, InfoBar wrappers). Safe to import without PyQt present.
 - `date_pickers.py` — Spanish month localization for qfluentwidgets `DatePicker`.
@@ -60,9 +65,11 @@ Desktop UI: PyQt5 + qfluentwidgets (FluentWindow). Windows-only, 32-bit target.
   No direct SQLAlchemy usage in `ui/`.
 - Hearing audio paths are stored relative to the data dir; the UI must resolve them with
   `service.get_audio_abs_path(rel)` and never build `<data_dir>` paths itself.
-- `ui.settings` persists prefs (`theme_mode`) to `get_settings_path()`:
+- `ui.settings` persists prefs (`theme_mode`, `search_filters`, `last_backup_at`,
+  `window_state`) to `get_settings_path()`:
   `Guilliman_DATA_DIR` → frozen (`%LOCALAPPDATA%/Guilliman/settings.json`) → **dev: repo root
   `settings.json`** (gitignored). In dev, running the app writes `settings.json` to the repo root.
+  `main.py` restores the window state on startup and saves it on `aboutToQuit`.
 
 ## Conventions (enforced — tests assert these)
 - Text inputs are normalized to UPPERCASE (`shared.make_uppercase`, `shared.restrict_input`).
