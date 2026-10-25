@@ -49,6 +49,7 @@ from ui.shared import (
 from ui.widgets import show_error, show_info
 
 from ._acting_officials import _ActingOfficialsSection
+from ._attachments import _AttachmentsSection
 from ._defendants import _DefendantsSection
 from ._documentaries import _DocumentariesSection
 from ._experts import _ExpertsSection
@@ -64,6 +65,7 @@ class CaseDetailView(
     _VictimsSection,
     _WitnessesSection,
     _DocumentariesSection,
+    _AttachmentsSection,
     _ExpertsSection,
     _ActingOfficialsSection,
     _HearingsSection,
@@ -81,6 +83,7 @@ class CaseDetailView(
         self._victim_rows: list[int] = []
         self._witness_rows: list[int] = []
         self._documentary_rows: list[int] = []
+        self._attachment_rows: list[int] = []
         self._expert_rows: list[int] = []
         self._official_rows: list[int] = []
         self._hearing_rows: list[int] = []
@@ -195,6 +198,7 @@ class CaseDetailView(
         layout.addWidget(self._build_victims_section())
         layout.addWidget(self._build_witnesses_section())
         layout.addWidget(self._build_documentaries_section())
+        layout.addWidget(self._build_attachments_section())
         layout.addWidget(self._build_experts_section())
         layout.addWidget(self._build_acting_officials_section())
         layout.addWidget(self._build_hearings_section())
@@ -268,6 +272,7 @@ class CaseDetailView(
         self._fill_victims(case)
         self._fill_witnesses(case)
         self._fill_documentaries(case)
+        self._fill_attachments(case)
         self._fill_experts(case)
         self._fill_acting_officials(case)
         self._fill_hearings(case)
