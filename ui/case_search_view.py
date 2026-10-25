@@ -25,6 +25,7 @@ from PyQt5.QtWidgets import (
 from qfluentwidgets import (
     Action,
     BodyLabel,
+    CheckBox,
     ComboBox,
     LineEdit,
     PrimaryPushButton,
@@ -139,6 +140,8 @@ class CaseSearchView(QWidget):
         row3.addWidget(self.clear_btn)
         row3.addWidget(self.export_pdf_btn)
         row3.addWidget(self.export_csv_btn)
+        self.include_archived = CheckBox("Incluir archivados")
+        row3.addWidget(self.include_archived)
         row3.addStretch(1)
         f_layout.addLayout(row3)
 
@@ -152,6 +155,7 @@ class CaseSearchView(QWidget):
             field.textChanged.connect(self._schedule_search)
         for combo in (self.defendant_status, self.verdict_status, self.crime_type):
             combo.currentIndexChanged.connect(self._schedule_search)
+        self.include_archived.stateChanged.connect(self._schedule_search)
 
         layout.addWidget(f_widget)
 
@@ -159,9 +163,9 @@ class CaseSearchView(QWidget):
         self.table = TableWidget()
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.setBorderVisible(True)
-        self.table.setColumnCount(4)
+        self.table.setColumnCount(5)
         self.table.setHorizontalHeaderLabels(
-            ["ID", "Número", "MP", "Fiscal"]
+            ["ID", "Número", "MP", "Fiscal", "Estado"]
         )
         self.table.horizontalHeader().setDefaultAlignment(Qt.AlignCenter)
         self.table.verticalHeader().setDefaultAlignment(Qt.AlignCenter)
@@ -197,6 +201,7 @@ class CaseSearchView(QWidget):
         self.defendant_name.clear()
         self.victim_name.clear()
         self.witness_name.clear()
+        self.include_archived.setChecked(False)
         self._page = 0
         self._do_search()
 
@@ -219,6 +224,7 @@ class CaseSearchView(QWidget):
         victim_name = (self.victim_name.text() or "").strip() or None
         witness_name = (self.witness_name.text() or "").strip() or None
         crime_type = combo_current_data(self.crime_type) or None
+        include_archived = self.include_archived.isChecked()
 
         # Obtener total para paginación.
         self._total = self.app.service.count_case_files(
@@ -229,6 +235,7 @@ class CaseSearchView(QWidget):
             defendant_status=defendant_status,
             verdict_status=verdict_status,
             crime_type=crime_type,
+            include_archived=include_archived,
         )
         max_page = max(0, (self._total - 1) // self._page_size)
         self._page = min(self._page, max_page)
@@ -245,6 +252,7 @@ class CaseSearchView(QWidget):
                 defendant_status=defendant_status,
                 verdict_status=verdict_status,
                 crime_type=crime_type,
+                include_archived=include_archived,
             )
         except ValueError as exc:
             logger.exception("Error al buscar expedientes")
@@ -265,6 +273,7 @@ class CaseSearchView(QWidget):
                     case.case_number or "",
                     case.prosecutor_file_number or "",
                     case.prosecutor_name or "",
+                    "Archivado" if case.archived_at else "Activo",
                 ),
                 start=1,
             ):
@@ -302,6 +311,12 @@ class CaseSearchView(QWidget):
         item = self.table.item(row, 0)
         return item.data(Qt.UserRole) if item is not None else None
 
+    def _case_at(self, row: int):
+        case_id = self._case_id_at(row)
+        if case_id is None:
+            return None
+        return next((c for c in self._last_cases if c.id == case_id), None)
+
     def _on_row_double_clicked(self, row: int, _col: int) -> None:
         case_id = self._case_id_at(row)
         if case_id is not None:
@@ -309,15 +324,24 @@ class CaseSearchView(QWidget):
 
     def _on_context_menu(self, pos) -> None:
         row = self.table.indexAt(pos).row()
-        if self._case_id_at(row) is None:
+        case = self._case_at(row)
+        if case is None:
             return
         menu = RoundMenu(parent=self)
-        edit_action = Action("Editar")
-        menu.addAction(edit_action)
-        edit_action.triggered.connect(lambda *_, r=row: self._edit_case(r))
-        delete_action = Action("Eliminar")
-        menu.addAction(delete_action)
-        delete_action.triggered.connect(lambda *_, r=row: self._delete_case(r))
+        if case.archived_at is not None:
+            restore_action = Action("Restaurar")
+            menu.addAction(restore_action)
+            restore_action.triggered.connect(lambda *_, r=row: self._restore_case(r))
+            delete_action = Action("Eliminar definitivamente")
+            menu.addAction(delete_action)
+            delete_action.triggered.connect(lambda *_, r=row: self._delete_case(r))
+        else:
+            edit_action = Action("Editar")
+            menu.addAction(edit_action)
+            edit_action.triggered.connect(lambda *_, r=row: self._edit_case(r))
+            archive_action = Action("Archivar")
+            menu.addAction(archive_action)
+            archive_action.triggered.connect(lambda *_, r=row: self._archive_case(r))
         menu.exec(self.table.viewport().mapToGlobal(pos))
 
     def _edit_case(self, row: int) -> None:
@@ -325,13 +349,52 @@ class CaseSearchView(QWidget):
         if case_id is not None:
             self.app.shell.open_case_form(case_id)
 
+    def _archive_case(self, row: int) -> None:
+        case_id = self._case_id_at(row)
+        if case_id is None:
+            return
+        if not confirm_delete(
+            self,
+            "¿Archivar este expediente? Podrás restaurarlo después; "
+            "no se eliminan datos ni audios.",
+        ):
+            return
+        try:
+            ok = self.app.service.archive_case_file(case_id)
+        except ValueError as exc:
+            logger.exception("Error al archivar expediente %s", case_id)
+            show_error(self, f"Error al archivar: {exc}")
+            return
+        if ok:
+            show_info(self, "Expediente archivado.")
+            self._do_search()
+        else:
+            show_error(self, "El expediente no existe o ya estaba archivado.")
+
+    def _restore_case(self, row: int) -> None:
+        case_id = self._case_id_at(row)
+        if case_id is None:
+            return
+        try:
+            ok = self.app.service.unarchive_case_file(case_id)
+        except ValueError as exc:
+            logger.exception("Error al restaurar expediente %s", case_id)
+            show_error(self, f"Error al restaurar: {exc}")
+            return
+        if ok:
+            show_info(self, "Expediente restaurado.")
+            self._do_search()
+        else:
+            show_error(self, "El expediente no existe o no estaba archivado.")
+
     def _delete_case(self, row: int) -> None:
         case_id = self._case_id_at(row)
         if case_id is None:
             return
         if not confirm_delete(
             self,
-            "¿Eliminar este expediente y todos sus registros relacionados?",
+            "¿Eliminar definitivamente este expediente y todos sus registros? "
+            "Esta acción no se puede deshacer.",
         ):
             return
         try:

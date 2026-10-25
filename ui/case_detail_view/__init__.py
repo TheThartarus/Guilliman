@@ -104,12 +104,12 @@ class CaseDetailView(
         header.addStretch(1)
         self.edit_btn = PrimaryPushButton("Editar")
         self.edit_btn.clicked.connect(self._on_edit)
-        self.delete_btn = PushButton("Eliminar")
-        self.delete_btn.clicked.connect(self._on_delete)
+        self.archive_btn = PushButton("Archivar")
+        self.archive_btn.clicked.connect(self._on_archive)
         self.export_btn = PushButton("Exportar PDF")
         self.export_btn.clicked.connect(self._on_export)
         header.addWidget(self.edit_btn)
-        header.addWidget(self.delete_btn)
+        header.addWidget(self.archive_btn)
         header.addWidget(self.export_btn)
         layout.addLayout(header)
 
@@ -224,6 +224,9 @@ class CaseDetailView(
             return
 
         self._case = case
+        archived = case.archived_at is not None
+        self.archive_btn.setText("Restaurar" if archived else "Archivar")
+        self.edit_btn.setEnabled(not archived)
         values = {
             "case_number": case.case_number,
             "prosecutor_file_number": case.prosecutor_file_number,
@@ -279,23 +282,40 @@ class CaseDetailView(
     def _on_edit(self) -> None:
         self.app.shell.open_case_form(self.case_file_id)
 
-    def _on_delete(self) -> None:
+    def _on_archive(self) -> None:
+        if self._case is None:
+            return
+        if self._case.archived_at is not None:
+            try:
+                ok = self.app.service.unarchive_case_file(self.case_file_id)
+            except ValueError as exc:
+                logger.exception("Error al restaurar expediente %s", self.case_file_id)
+                show_error(self, f"Error al restaurar: {exc}")
+                return
+            if ok:
+                show_info(self, "Expediente restaurado.")
+                self.load()
+            else:
+                show_error(self, "El expediente no existe o no estaba archivado.")
+            return
         if not confirm_delete(
-            self, "¿Eliminar este expediente y todos sus registros relacionados?"
+            self,
+            "¿Archivar este expediente? Podrás restaurarlo después; "
+            "no se eliminan datos ni audios.",
         ):
             return
         try:
-            ok = self.app.service.delete_case_file(self.case_file_id)
+            ok = self.app.service.archive_case_file(self.case_file_id)
         except ValueError as exc:
-            logger.exception("Error al eliminar expediente %s", self.case_file_id)
-            show_error(self, f"Error al eliminar: {exc}")
+            logger.exception("Error al archivar expediente %s", self.case_file_id)
+            show_error(self, f"Error al archivar: {exc}")
             return
         if ok:
-            show_info(self, "Expediente eliminado.")
+            show_info(self, "Expediente archivado.")
             if self.on_close:
                 self.on_close(f"detail-{self.case_file_id}")
         else:
-            show_error(self, "El expediente no existe.")
+            show_error(self, "El expediente no existe o ya estaba archivado.")
 
     def _on_export(self) -> None:
         if self._case is None:
