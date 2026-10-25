@@ -62,9 +62,11 @@ class CaseFile(Base):
     # Campos adicionales para clasificación de delitos.
     is_emblematic: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     pseudonym: Mapped[str | None] = mapped_column(String(100))
-    crime_type: Mapped[str | None] = mapped_column(String(50))  # Ordinario, Violencia, Droga
+    crime_type: Mapped[str | None] = mapped_column(String(50))  # Ordinario, Violencia, Droga, Armas
     drug_quantity: Mapped[float | None] = mapped_column(Float)  # Cantidad/peso de droga incautada
     drug_type: Mapped[str | None] = mapped_column(String(50))  # Marihuana, Cocaína, Crack, Metanfetamina, LSD, Heroína
+    weapon_quantity: Mapped[int | None] = mapped_column(Integer)  # N° de armas incautadas
+    weapon_type: Mapped[str | None] = mapped_column(String(50))  # Arma de Fuego, Arma Blanca, etc.
     piece_count: Mapped[int | None] = mapped_column(Integer)  # N° de piezas del expediente
 
     created_at: Mapped[datetime] = mapped_column(

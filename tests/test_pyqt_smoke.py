@@ -142,6 +142,27 @@ def test_pyqt_ui_builds() -> None:
     assert kwargs["prosecutor_name"] == "FISCALIA TEST"
     assert kwargs["anticipated_proof_date"] == date(2026, 2, 15)
 
+    # Tipo de delito "Armas": colecta condicional y persistencia.
+    combo_set_data(form._crime_type, "Armas")
+    form._weapon_quantity.setValue(3)
+    combo_set_data(form._weapon_type, "Arma de Fuego")
+    weapon_kwargs = form._collect_kwargs()
+    assert weapon_kwargs["crime_type"] == "Armas"
+    assert weapon_kwargs["weapon_quantity"] == 3
+    assert weapon_kwargs["weapon_type"] == "Arma de Fuego"
+
+    weapons_id = service.create_case_file(
+        CaseFileCreate(
+            case_number="MP-2026-ARMAS",
+            crime_type="Armas",
+            weapon_quantity=3,
+            weapon_type="Arma de Fuego",
+        )
+    )
+    weapons_case = service.get_case_file_by_id(weapons_id)
+    assert weapons_case.weapon_quantity == 3
+    assert weapons_case.weapon_type == "Arma de Fuego"
+
     detail = case_detail_view.CaseDetailView(shell.app, case_id, on_close=lambda: None)
     detail.load()
     assert detail._case is not None

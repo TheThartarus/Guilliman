@@ -42,6 +42,7 @@ from db import (
     CrimeTypeValue,
     DrugTypeValue,
     DuplicateCaseNumberError,
+    WeaponTypeValue,
 )
 from pydantic import ValidationError
 
@@ -120,6 +121,7 @@ CRIME_TYPE_LABELS: dict[CrimeTypeValue, str] = {
     "Ordinario": "Ordinario",
     "Violencia": "Violencia",
     "Droga": "Droga",
+    "Armas": "Armas",
 }
 
 DRUG_TYPE_LABELS: dict[DrugTypeValue, str] = {
@@ -129,6 +131,15 @@ DRUG_TYPE_LABELS: dict[DrugTypeValue, str] = {
     "Metanfetamina": "Metanfetamina",
     "LSD": "LSD",
     "Heroína": "Heroína",
+}
+
+WEAPON_TYPE_LABELS: dict[WeaponTypeValue, str] = {
+    "Arma de Fuego": "Arma de Fuego",
+    "Arma Blanca": "Arma Blanca",
+    "Arma Contundente": "Arma Contundente",
+    "Arma Improvisada": "Arma Improvisada",
+    "Explosivo": "Explosivo",
+    "Otra": "Otra",
 }
 
 
@@ -363,8 +374,20 @@ class CaseFormView(QWidget):
             self._drug_type.addItem(label, userData=value)
         self._fields["drug_type"] = self._drug_type_card
 
-        # Visibilidad condicional de la sección Droga (se conecta en _build_layout).
+        # -- Sección Armas (oculta por defecto, se muestra si crime_type == "Armas") --
+        self._weapon_quantity_card = _SpinBoxCard("Cantidad de Armas", " armas", parent=self)
+        self._weapon_quantity = self._weapon_quantity_card
+        self._fields["weapon_quantity"] = self._weapon_quantity_card
+
+        self._weapon_type_card = _ComboBoxCard("Tipo de Armas", parent=self)
+        self._weapon_type = self._weapon_type_card.combo
+        for value, label in WEAPON_TYPE_LABELS.items():
+            self._weapon_type.addItem(label, userData=value)
+        self._fields["weapon_type"] = self._weapon_type_card
+
+        # Visibilidad condicional de las secciones Droga/Armas (conectada en _build_layout).
         self._crime_type.currentIndexChanged.connect(self._update_drug_visibility)
+        self._crime_type.currentIndexChanged.connect(self._update_weapon_visibility)
 
         self._location_card = _LineEditCard("Ubicación", "address", parent=self)
         self._location = self._location_card._edit
@@ -432,7 +455,13 @@ class CaseFormView(QWidget):
             self._drug_type_card,
         ])
         layout.addWidget(self._drug_section)
+        self._weapon_section = self._section("Armas", [
+            self._weapon_quantity_card,
+            self._weapon_type_card,
+        ])
+        layout.addWidget(self._weapon_section)
         self._update_drug_visibility()
+        self._update_weapon_visibility()
         layout.addStretch(1)
 
         scroll.setWidget(content)
@@ -470,6 +499,14 @@ class CaseFormView(QWidget):
         if not is_drug:
             self._drug_quantity.setValue(0.0)
             self._drug_type.setCurrentIndex(-1)
+
+    def _update_weapon_visibility(self) -> None:
+        """Muestra u oculta la sección 'Armas' según el tipo de delito seleccionado."""
+        is_weapons = combo_current_data(self._crime_type) == "Armas"
+        self._weapon_section.setVisible(is_weapons)
+        if not is_weapons:
+            self._weapon_quantity.setValue(0)
+            self._weapon_type.setCurrentIndex(-1)
 
     # ------------------------------------------------------------------ #
     # Carga en edición
@@ -513,6 +550,10 @@ class CaseFormView(QWidget):
             self._drug_quantity.setValue(case.drug_quantity)
         if case.drug_type:
             combo_set_data(self._drug_type, case.drug_type)
+        if case.weapon_quantity is not None:
+            self._weapon_quantity.setValue(case.weapon_quantity)
+        if case.weapon_type:
+            combo_set_data(self._weapon_type, case.weapon_type)
         self._location.setText(case.location or "")
 
     def reset(self) -> None:
@@ -540,6 +581,8 @@ class CaseFormView(QWidget):
         self._piece_count.setValue(0)
         self._drug_quantity.setValue(0.0)
         self._drug_type.setCurrentIndex(-1)
+        self._weapon_quantity.setValue(0)
+        self._weapon_type.setCurrentIndex(-1)
         self._location.clear()
 
     # ------------------------------------------------------------------ #
@@ -553,9 +596,12 @@ class CaseFormView(QWidget):
     def _collect_kwargs(self) -> dict:
         crime_type = combo_current_data(self._crime_type)
         is_drug = crime_type == "Droga"
+        is_weapons = crime_type == "Armas"
         piece_count = self._piece_count.value()
         drug_qty = self._drug_quantity.value() if is_drug else None
         drug_type = combo_current_data(self._drug_type) if is_drug else None
+        weapon_qty = self._weapon_quantity.value() if is_weapons else None
+        weapon_type = combo_current_data(self._weapon_type) if is_weapons else None
 
         return {
             "case_number": (self._case_number.text() or "").strip().upper(),
@@ -582,6 +628,8 @@ class CaseFormView(QWidget):
             "piece_count": piece_count if piece_count > 0 else None,
             "drug_quantity": drug_qty,
             "drug_type": drug_type,
+            "weapon_quantity": weapon_qty if weapon_qty and weapon_qty > 0 else None,
+            "weapon_type": weapon_type,
         }
 
     def _mark_errors(self, errors: dict[str, str]) -> None:

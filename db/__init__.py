@@ -35,6 +35,7 @@ from .schemas import (
     ScheduledHearingItem,
     VictimCreate,
     VictimRead,
+    WeaponTypeValue,
     WitnessCreate,
     WitnessRead,
 )
@@ -73,4 +74,5 @@ __all__ = [
     "DuplicateCaseNumberError",
     "VictimNotFoundError",
     "WitnessNotFoundError",
+    "WeaponTypeValue",
 ]

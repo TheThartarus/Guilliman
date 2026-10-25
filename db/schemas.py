@@ -29,6 +29,7 @@ CrimeTypeValue = Literal[
     "Ordinario",
     "Violencia",
     "Droga",
+    "Armas",
 ]
 
 DrugTypeValue = Literal[
@@ -38,6 +39,15 @@ DrugTypeValue = Literal[
     "Metanfetamina",
     "LSD",
     "Heroína",
+]
+
+WeaponTypeValue = Literal[
+    "Arma de Fuego",
+    "Arma Blanca",
+    "Arma Contundente",
+    "Arma Improvisada",
+    "Explosivo",
+    "Otra",
 ]
 
 
@@ -320,6 +330,8 @@ class CaseFileCreate(BaseModel):
     crime_type: CrimeTypeValue | None = None
     drug_quantity: float | None = None
     drug_type: DrugTypeValue | None = None
+    weapon_quantity: int | None = None
+    weapon_type: WeaponTypeValue | None = None
     piece_count: int | None = None
 
 
@@ -353,6 +365,8 @@ class CaseFileUpdate(BaseModel):
     crime_type: CrimeTypeValue | None = None
     drug_quantity: float | None = None
     drug_type: DrugTypeValue | None = None
+    weapon_quantity: int | None = None
+    weapon_type: WeaponTypeValue | None = None
     piece_count: int | None = None
 
 
@@ -387,6 +401,8 @@ class CaseFileRead(BaseModel):
     crime_type: str | None = None
     drug_quantity: float | None = None
     drug_type: str | None = None
+    weapon_quantity: int | None = None
+    weapon_type: str | None = None
     piece_count: int | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
