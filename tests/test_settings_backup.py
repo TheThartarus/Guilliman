@@ -21,3 +21,22 @@ def test_last_backup_at_roundtrip(tmp_path, monkeypatch) -> None:
     settings.save_theme_mode("DARK")
     assert settings.load_theme_mode() == "DARK"
     assert settings.load_last_backup_at() == stamp
+
+
+def test_search_filters_and_window_state_roundtrip(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("Guilliman_DATA_DIR", str(tmp_path))
+
+    filters = {
+        "query": "robo",
+        "crime_type": "Armas",
+        "include_archived": True,
+    }
+    settings.save_search_filters(filters)
+    assert settings.load_search_filters() == filters
+
+    settings.save_window_state(False, 1000, 700)
+    assert settings.load_window_state() == {
+        "maximized": False,
+        "width": 1000,
+        "height": 700,
+    }

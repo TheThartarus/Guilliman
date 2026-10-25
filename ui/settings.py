@@ -15,6 +15,8 @@ from pathlib import Path
 _KEY = "theme_mode"
 _DEFAULT = "LIGHT"
 _LAST_BACKUP_KEY = "last_backup_at"
+_SEARCH_FILTERS_KEY = "search_filters"
+_WINDOW_STATE_KEY = "window_state"
 
 
 def get_settings_path() -> Path:
@@ -94,4 +96,34 @@ def save_last_backup_at(value: datetime | None = None) -> None:
     """Registra el momento del último respaldo (por defecto, ahora)."""
     data = _read_data()
     data[_LAST_BACKUP_KEY] = (value or datetime.now()).isoformat(timespec="seconds")
+    _write_data(data)
+
+
+def load_search_filters() -> dict:
+    """Retorna los filtros de búsqueda guardados (dict vacío si no hay)."""
+    value = _read_data().get(_SEARCH_FILTERS_KEY)
+    return value if isinstance(value, dict) else {}
+
+
+def save_search_filters(filters: dict) -> None:
+    """Persiste los filtros de búsqueda entre ejecuciones."""
+    data = _read_data()
+    data[_SEARCH_FILTERS_KEY] = filters
+    _write_data(data)
+
+
+def load_window_state() -> dict:
+    """Retorna el estado guardado de la ventana (dict vacío si no hay)."""
+    value = _read_data().get(_WINDOW_STATE_KEY)
+    return value if isinstance(value, dict) else {}
+
+
+def save_window_state(maximized: bool, width: int, height: int) -> None:
+    """Persiste si la ventana estaba maximizada y su tamaño normal."""
+    data = _read_data()
+    data[_WINDOW_STATE_KEY] = {
+        "maximized": bool(maximized),
+        "width": int(width),
+        "height": int(height),
+    }
     _write_data(data)
