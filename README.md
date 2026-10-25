@@ -12,11 +12,14 @@ Aplicación de escritorio nativa para Windows diseñada para la gestión integra
 
 ## Funcionalidades
 
-- **Panel de inicio** — Contadores de expedientes, audiencias próximas (7 días) y
-  audiencias pendientes de audio o acta; tabla de las próximas audiencias.
+- **Panel de inicio** — Tarjetas accionables: expedientes, audiencias próximas (7 días),
+  audiencias pendientes de audio o acta y alertas de detención; tabla de las próximas
+  audiencias. Cada tarjeta navega a la vista o listado correspondiente.
 - **Gestión de expedientes** — Número de expediente único, fiscalía, fiscal, defensa, agencia aprehendadora, descripción del hecho, resumen, tipo de origen, estado de fallo y fechas procesales.
 - **Archivado y restauración** — Los expedientes se archivan (no se borran) y pueden
   restaurarse; el borrado definitivo queda como acción explícita sobre un archivado.
+- **Plazos de detención** — Alerta configurable (Ajustes) para acusados detenidos que
+  alcanzan o superan N días, con listado de días detenido y acceso directo al expediente.
 - **Partes por expediente** (borrado en cascada al eliminar el expediente):
   - **Acusados** — Nombre, cédula, fecha de aprehensión, fecha de audiencia, dirección, teléfono y notas.
   - **Víctimas y testigos** — Nombre, cédula, dirección, teléfono y notas.
@@ -31,6 +34,8 @@ Aplicación de escritorio nativa para Windows diseñada para la gestión integra
 - **Audios de audiencias** — Adjunta la grabación de cada audiencia; el archivo se copia
   al equipo local para no depender del teléfono. Permite abrir/reproducir el audio desde
   el detalle del expediente.
+- **Documentos adjuntos** — Guarda oficios, cédulas, informes y otros archivos en el
+  expediente, con apertura y eliminación; se incluyen en el respaldo completo.
 - **Acta por audiencia** — Redacta o pega la transcripción de cada audiencia (con
   autoguardado) y expórtala a PDF (para imprimir), RTF (editable en Word) o imprímela
   directamente. La tabla de audiencias indica cuáles ya tienen acta.
@@ -140,8 +145,9 @@ Estructura del directorio de datos:
 ```
 <data_dir>/
 ├── case_files.db       # base de datos SQLite
-├── settings.json       # preferencias (tema)
+├── settings.json       # preferencias (tema, filtros, respaldo, plazo)
 ├── audios/             # copias locales de los audios de audiencias (.gitignore)
+├── attachments/        # documentos adjuntos de los expedientes (.gitignore)
 └── backups/            # respaldos generados automáticamente
 ```
 
@@ -152,8 +158,8 @@ el archivo correspondiente se elimina del store.
 ### Respaldo
 
 En **Ajustes → Respaldar datos...** se genera un único archivo `.zip` con la base de
-datos y toda la carpeta `audios/`. **Restaurar datos** reemplaza ambos; antes de
-restaurar, la app crea automáticamente un respaldo de seguridad.
+datos y las carpetas `audios/` y `attachments/`. **Restaurar datos** reemplaza todo;
+antes de restaurar, la app crea automáticamente un respaldo de seguridad.
 
 **Respaldo rápido** guarda en `<data_dir>/backups/` y rota, conservando los últimos 10
 respaldos. El panel de inicio muestra la antigüedad del último respaldo y avisa cuando

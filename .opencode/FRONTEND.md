@@ -10,12 +10,13 @@ Desktop UI: PyQt5 + qfluentwidgets (FluentWindow). Windows-only, 32-bit target.
 
 ## Structure (`ui/`)
 - `app_shell.py` — `AppShell(FluentWindow)` + `GuillimanApp` (shared state: `service` + `shell`)
-  + `SettingsView` (theme combo + "Respaldar datos..." / "Respaldo rápido" (rotating,
-  default folder) / "Restaurar datos" / "Verificar audios"). Backups go through
-  `service.backup_data()` / `service.restore_data()`; `ui.settings.save_last_backup_at`
-  records the timestamp.
-- `dashboard_view.py` — "Inicio": stat cards (cases, upcoming 7 days, hearings missing
-  audio/acta), last-backup age line, and a table of the next 7 days. Default view.
+  + `SettingsView` (theme combo, detention alert threshold, "Respaldar datos..." /
+  "Respaldo rápido" (rotating, default folder) / "Restaurar datos" / "Verificar audios").
+  Backups go through `service.backup_data()` / `service.restore_data()`;
+  `ui.settings.save_last_backup_at` records the timestamp.
+- `dashboard_view.py` — "Inicio": five clickable stat cards (cases → search; upcoming →
+  agenda +7 days; missing audio/acta → agenda pending filter; detention alerts → dialog),
+  last-backup age line, and a table of the next 7 days. Default view.
 - `case_search_view.py` — search / list of case files; filters (text, status, verdict,
   crime type, names, accusation date range, origin, archived) run automatically with a
   300 ms debounce and are persisted in `settings.json`. Results are sortable; row→case
@@ -25,19 +26,23 @@ Desktop UI: PyQt5 + qfluentwidgets (FluentWindow). Windows-only, 32-bit target.
 - `case_form_view.py` — create / edit form for a case file and its child entities.
 - `case_detail_view/` — read-only detail of a case file (package, not single file).
   Split into mixins per entity: `_defendants.py`, `_victims.py`, `_witnesses.py`,
-  `_documentaries.py`, `_experts.py`, `_hearings.py`. All combined in
-  `CaseDetailView` via multiple inheritance. `_hearings.py` shows "Acta" and "Audio"
+  `_documentaries.py`, `_attachments.py`, `_experts.py`, `_hearings.py`. All combined in
+  `CaseDetailView` via multiple inheritance. `_attachments.py` lists case documents
+  (attach/open/delete; files stored under `attachments/`). `_hearings.py` shows "Acta" and "Audio"
   columns, an "Acta" button, and a context menu with edit acta, duplicate (+7 days),
   export acta (PDF/RTF), print acta and open audio (resolved via
   `service.get_audio_abs_path`). The header has an Archivar/Restaurar button; editing is
   disabled for archived cases.
-- `agenda_view.py` — calendar / agenda of scheduled hearings; filters by date range and
-  status; exports PDF and iCalendar (`.ics`, with a 1-day `VALARM` reminder).
+- `agenda_view.py` — calendar / agenda of scheduled hearings; filters by date range,
+  status and pending kind (sin audio / sin acta); exports PDF and iCalendar (`.ics`, with
+  a 1-day `VALARM` reminder). `show_upcoming()` / `show_pending(kind)` are used by the
+  dashboard cards.
 - `settings.py` — theme persistence (light / dark) to `settings.json`.
 - `dialogs/` — entity dialogs, split into private modules:
   `_defendant.py` (`DefendantDialog`), `_person.py` (`VictimDialog`, `WitnessDialog`),
   `_record.py` (`DocumentaryDialog`, `ExpertDialog`), `_hearing.py` (`HearingDialog`),
   `_transcription.py` (`HearingTranscriptionDialog`),
+  `_detention.py` (`DetentionAlertsDialog`),
   `_cards.py` (`_DateCard`, `_DateTimeCard`, `_FlaggedDateCard`), `_misc.py` (`confirm_delete`, `pick_save_pdf`),
   `_sizes.py` (dialog dimension constants). All re-exported from `dialogs/__init__.py`.
   `HearingDialog` also attaches audio: it copies the file (via `service.store_audio_file`)
@@ -66,7 +71,7 @@ Desktop UI: PyQt5 + qfluentwidgets (FluentWindow). Windows-only, 32-bit target.
 - Hearing audio paths are stored relative to the data dir; the UI must resolve them with
   `service.get_audio_abs_path(rel)` and never build `<data_dir>` paths itself.
 - `ui.settings` persists prefs (`theme_mode`, `search_filters`, `last_backup_at`,
-  `window_state`) to `get_settings_path()`:
+  `window_state`, `detention_alert_days`) to `get_settings_path()`:
   `Guilliman_DATA_DIR` → frozen (`%LOCALAPPDATA%/Guilliman/settings.json`) → **dev: repo root
   `settings.json`** (gitignored). In dev, running the app writes `settings.json` to the repo root.
   `main.py` restores the window state on startup and saves it on `aboutToQuit`.

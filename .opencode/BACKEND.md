@@ -45,9 +45,9 @@ Persistence + business logic. Pure Python (SQLAlchemy 2.0 + SQLite, pydantic). N
 
 ## Models (`models.py`)
 - `CaseFile` (1) — children (N): `Defendant`, `Victim`, `Witness`, `Documentary`,
-  `Expert`, `HearingSchedule`.
+  `Expert`, `ActingOfficial`, `HearingSchedule`, `Attachment`.
   Tables: `case_files`, `defendants`, `victims`, `witnesses`, `documentaries`,
-  `experts`, `hearing_schedules`.
+  `experts`, `acting_officials`, `hearing_schedules`, `attachments`.
 - All child FKs use `ondelete="CASCADE"` and relationships use
   `cascade="all, delete-orphan"`, `passive_deletes=True`, `lazy="selectin"`.
   Deleting a `CaseFile` removes all its children automatically.
@@ -64,6 +64,8 @@ Persistence + business logic. Pure Python (SQLAlchemy 2.0 + SQLite, pydantic). N
   - `HearingSchedule`: `scheduled_at` (datetime), `hearing_type`, `status`, `notes`,
     `transcription` (acta, free text), `audio_path` (relative to `get_app_data_dir()`),
     `audio_filename` (original name).
+  - `Attachment`: `name` (display title), `original_filename`, `rel_path` (relative to
+    `get_app_data_dir()`, under `attachments/`), `uploaded_at`.
 
 ## Schemas (`schemas.py`)
 - `*Create` = input validation.
@@ -81,6 +83,10 @@ Persistence + business logic. Pure Python (SQLAlchemy 2.0 + SQLite, pydantic). N
 - `AudioIntegrityIssue` reports a broken audio reference: `case_file_id`, `case_number`,
   `hearing_id`, `scheduled_at`, `audio_path`, `audio_filename`, `reason`
   (`"missing"` | `"outside_store"`). Produced by `check_audio_integrity()`.
+- `AttachmentCreate` / `AttachmentRead` cover case documents; `CaseFileRead.attachments`
+  includes them eagerly.
+- `DetentionAlertItem` (case/defendant/days) is produced by `list_detention_alerts()`;
+  `DefendantRead.days_detained` is computed only when `status == "Detenido"`.
 - `HearingScheduleCreate` / `HearingScheduleUpdate` / `HearingScheduleRead` carry
   `audio_path` + `audio_filename` (optional) and `transcription` (acta). The agenda
   item does not.
@@ -117,7 +123,8 @@ Persistence + business logic. Pure Python (SQLAlchemy 2.0 + SQLite, pydantic). N
   clears them. Stored files are deleted when the audio is replaced/cleared, the hearing
   is deleted, or the case file is deleted (cascade). Never uppercase these values.
 - Backup: `backup_data(dest_zip_path=None, keep=10) -> str` zips the `.db` **and**
-  `audios/` (default dest: `<data_dir>/backups/guilliman_backup_<timestamp>.zip`);
+  the `audios/` + `attachments/` stores (default dest:
+  `<data_dir>/backups/guilliman_backup_<timestamp>.zip`);
   with the default destination it rotates, keeping the newest `keep` zips.
   `restore_data(src_zip_path)` validates the zip (rejects zip-slip) and replaces both.
   `backup_db(dest_path=None)` / `restore_db(src_path)` are DB-only legacy helpers.
@@ -125,6 +132,11 @@ Persistence + business logic. Pure Python (SQLAlchemy 2.0 + SQLite, pydantic). N
 - `check_audio_integrity() -> list[AudioIntegrityIssue]` verifies every referenced
   audio exists inside `<data_dir>/audios/`; flags missing files and paths that resolve
   outside the store.
+- Attachments: `add_attachment(case_id, AttachmentCreate(name), src_path) -> int`,
+  `get_attachment_abs_path(rel) -> str`, `delete_attachment(id) -> bool`. Files live in
+  `<data_dir>/attachments/`; deleting the case deletes its attachment files.
+- Detention: `list_detention_alerts(threshold_days) -> list[DetentionAlertItem]` over
+  active cases with `status == "Detenido"` and `arrest_date` set.
 - Error / return semantics (relevant for the UI):
   - `add_*` / `update_*` raise `CaseFileNotFoundError` (subclass of `ValueError`) if the
     parent case file does not exist.

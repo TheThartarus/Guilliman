@@ -48,6 +48,14 @@ Compact guidance for agents working in this repo. Signals only.
   uppercased or filtered). It is edited via `HearingTranscriptionDialog`, shown as an
   "Acta" column in the detail table, and exported to PDF/RTF by `ui.exporters`
   (`export_hearing_minutes_pdf` / `export_hearing_minutes_rtf`).
+- **Attachments**: each case file can store documents in `<data_dir>/attachments/`
+  (`attachments` table, relative `rel_path`). Public API: `add_attachment(case_id,
+  AttachmentCreate(name), src_path)`, `get_attachment_abs_path(rel)`,
+  `delete_attachment(id)`. Files are deleted when the attachment or its parent case is
+  deleted; full backups include both `audios/` and `attachments/`.
+- **Detention alerts**: `list_detention_alerts(threshold_days)` returns detained
+  defendants (`status == "Detenido"`, active cases) at/over the threshold configured in
+  `ui.settings` (`detention_alert_days`, default 30).
 
 ## Quirks / gotchas
 - `.opencode/node_modules` and `.opencode/package.json` are **OpenCode's own plugin
@@ -65,9 +73,9 @@ Compact guidance for agents working in this repo. Signals only.
   `init_db()` only for versions newer than the recorded `schema_version`. Never edit a
   released migration; append a new entry to `MIGRATIONS` instead.
 - **Backups**: the user-facing "Respaldar datos" flow uses `backup_data()` /
-  `restore_data()`, which zip the `.db` **and** `audios/` together. `backup_db()` /
-  `restore_db()` remain DB-only (legacy). `restore_data()` validates the zip (rejects
-  zip-slip) and replaces both the DB and the whole `audios/` folder; Settings calls
+  `restore_data()`, which zip the `.db` **and** the `audios/` + `attachments/` stores.
+  `backup_db()` / `restore_db()` remain DB-only (legacy). `restore_data()` validates the
+  zip (rejects zip-slip) and replaces both the DB and the stores; Settings calls
   `backup_data()` first as a safety net before restoring. "Respaldo rápido" uses the
   default `<data_dir>/backups/` destination and rotates, keeping the newest `keep`
   (default 10). `ui.settings` records `last_backup_at` for the dashboard reminder.
