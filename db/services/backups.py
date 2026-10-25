@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import shutil
 import zipfile
 from datetime import datetime
@@ -10,9 +11,12 @@ from pathlib import Path
 from ..database import DEFAULT_DB_PATH, get_app_data_dir
 from ._base import _ServiceMixin
 
+logger = logging.getLogger("guilliman")
+
 # Nombres canónicos dentro del .zip de respaldo completo.
 _ARCHIVE_DB_NAME = "case_files.db"
 _ARCHIVE_AUDIO_DIR = "audios"
+_BACKUP_GLOB = "guilliman_backup_*.zip"
 
 
 def _is_audio_member(name: str) -> bool:
@@ -82,21 +86,23 @@ class BackupMethods(_ServiceMixin):
         shutil.copy2(src, dest)
         self.init_db()
 
-    def backup_data(self, dest_zip_path: str | None = None) -> str:
+    def backup_data(self, dest_zip_path: str | None = None, keep: int = 10) -> str:
         """Respaldo completo: la base ``.db`` y la carpeta ``audios/`` en un .zip.
 
         Args:
             dest_zip_path: Ruta del .zip a crear (su carpeta se crea si falta).
                 Si es ``None``, se genera
-                ``<data_dir>/backups/guilliman_backup_<timestamp>.zip``.
+                ``<data_dir>/backups/guilliman_backup_<timestamp>.zip`` y se
+                aplica rotación (se conservan los ``keep`` más recientes).
+            keep: Número de respaldos a conservar en la carpeta por defecto.
 
         Returns:
             Ruta absoluta del .zip creado.
         """
+        backups_dir = get_app_data_dir() / "backups"
         if dest_zip_path is None:
-            backups_dir = get_app_data_dir() / "backups"
             backups_dir.mkdir(parents=True, exist_ok=True)
-            stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
             dest = backups_dir / f"guilliman_backup_{stamp}.zip"
         else:
             dest = Path(dest_zip_path).resolve()
@@ -118,7 +124,30 @@ class BackupMethods(_ServiceMixin):
                             archive.write(file, arcname=arcname)
         finally:
             self.init_db()
+        if dest_zip_path is None:
+            self._rotate_backups(backups_dir, keep)
         return str(dest)
+
+    @staticmethod
+    def _rotate_backups(backups_dir: Path, keep: int) -> None:
+        """Elimina los respaldos más antiguos, conservando los últimos ``keep``.
+
+        El nombre incluye un timestamp ordenable, así que el orden lexicográfico
+        descendente equivale al cronológico (evita depender de la resolución de
+        ``mtime`` del sistema de archivos).
+        """
+        if keep < 1:
+            return
+        files = sorted(
+            backups_dir.glob(_BACKUP_GLOB), key=lambda path: path.name, reverse=True
+        )
+        for old in files[keep:]:
+            try:
+                old.unlink()
+            except OSError as error:
+                logger.warning(
+                    "No se pudo borrar el respaldo antiguo %s: %s", old, error
+                )
 
     def restore_data(self, src_zip_path: str) -> None:
         """Restaura la base y la carpeta ``audios/`` desde un respaldo completo.
