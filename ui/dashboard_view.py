@@ -23,6 +23,7 @@ from qfluentwidgets import (
     TitleLabel,
 )
 
+from ui import settings as app_settings
 from ui.shared import (
     HEARING_STATUS_LABELS,
     HEARING_TYPE_LABELS,
@@ -80,6 +81,9 @@ class DashboardView(QWidget):
             cards.addWidget(card, 1)
         layout.addLayout(cards)
 
+        self.backup_label = BodyLabel("")
+        layout.addWidget(self.backup_label)
+
         layout.addWidget(SubtitleLabel("Próximas audiencias (7 días)"))
 
         self.table = TableWidget()
@@ -113,6 +117,8 @@ class DashboardView(QWidget):
         self.no_audio_card.set_value(missing_audio)
         self.no_acta_card.set_value(missing_acta)
 
+        self._update_backup_label()
+
         self._items = upcoming
         self.table.setRowCount(len(upcoming))
         for row, item in enumerate(upcoming):
@@ -132,6 +138,25 @@ class DashboardView(QWidget):
             self.table.setItem(
                 row, 5, QTableWidgetItem("Sí" if item.has_audio else "—")
             )
+
+    def _update_backup_label(self) -> None:
+        """Muestra la antigüedad del último respaldo y avisa si conviene hacer uno."""
+        last_backup = app_settings.load_last_backup_at()
+        if last_backup is None:
+            self.backup_label.setText(
+                "Último respaldo: nunca — usa Ajustes → Respaldo rápido."
+            )
+            return
+        days = max(0, (datetime.now() - last_backup).days)
+        if days == 0:
+            text = "Último respaldo: hoy"
+        elif days == 1:
+            text = "Último respaldo: hace 1 día"
+        else:
+            text = f"Último respaldo: hace {days} días"
+        if days > 7:
+            text += " — considera respaldar (Ajustes)."
+        self.backup_label.setText(text)
 
     def _on_row_double(self, row: int, _col: int) -> None:
         if 0 <= row < len(self._items):

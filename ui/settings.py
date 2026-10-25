@@ -9,10 +9,12 @@ from __future__ import annotations
 import json
 import os
 import sys
+from datetime import datetime
 from pathlib import Path
 
 _KEY = "theme_mode"
 _DEFAULT = "LIGHT"
+_LAST_BACKUP_KEY = "last_backup_at"
 
 
 def get_settings_path() -> Path:
@@ -43,31 +45,53 @@ def get_settings_path() -> Path:
 SETTINGS_PATH = get_settings_path()
 
 
-def load_theme_mode() -> str:
-    """Retorna el modo de tema guardado ('LIGHT' | 'DARK'); LIGHT por omisión."""
+def _read_data() -> dict:
+    """Lee el JSON de preferencias; devuelve un dict vacío si falta o es inválido."""
     path = get_settings_path()
     try:
         if path.exists():
             data = json.loads(path.read_text(encoding="utf-8"))
-            return data.get(_KEY, _DEFAULT)
-    except Exception:  # noqa: BLE001 - preferencia no crítica
+            return data if isinstance(data, dict) else {}
+    except Exception:  # noqa: BLE001 - preferencias no críticas
         pass
-    return _DEFAULT
+    return {}
+
+
+def _write_data(data: dict) -> None:
+    """Escribe las preferencias, ignorando errores de I/O."""
+    try:
+        path = get_settings_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    except Exception:  # noqa: BLE001 - si no se puede guardar, se ignora
+        pass
+
+
+def load_theme_mode() -> str:
+    """Retorna el modo de tema guardado ('LIGHT' | 'DARK'); LIGHT por omisión."""
+    return _read_data().get(_KEY, _DEFAULT)
 
 
 def save_theme_mode(mode: str) -> None:
     """Guarda el modo de tema para conservarlo entre ejecuciones."""
+    data = _read_data()
+    data[_KEY] = mode
+    _write_data(data)
+
+
+def load_last_backup_at() -> datetime | None:
+    """Retorna la fecha/hora del último respaldo registrado (o None)."""
+    value = _read_data().get(_LAST_BACKUP_KEY)
+    if not value:
+        return None
     try:
-        path = get_settings_path()
-        # Crea el directorio contenedor (p. ej. %LOCALAPPDATA%/Guilliman) si falta.
-        path.parent.mkdir(parents=True, exist_ok=True)
-        data: dict[str, str] = {}
-        if path.exists():
-            try:
-                data = json.loads(path.read_text(encoding="utf-8"))
-            except Exception:  # noqa: BLE001 - archivo corrupto -> sobrescribir
-                data = {}
-        data[_KEY] = mode
-        path.write_text(json.dumps(data, indent=2), encoding="utf-8")
-    except Exception:  # noqa: BLE001 - si no se puede guardar, se ignora
-        pass
+        return datetime.fromisoformat(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def save_last_backup_at(value: datetime | None = None) -> None:
+    """Registra el momento del último respaldo (por defecto, ahora)."""
+    data = _read_data()
+    data[_LAST_BACKUP_KEY] = (value or datetime.now()).isoformat(timespec="seconds")
+    _write_data(data)

@@ -76,14 +76,21 @@ class SettingsView(QWidget):
         # Respaldo y restauración de la base de datos (integra B3).
         layout.addWidget(SubtitleLabel("Respaldo de datos"))
         backup_row = QHBoxLayout()
-        self.backup_btn = PushButton("Respaldar datos (BD + audios)")
+        self.backup_btn = PushButton("Respaldar datos...")
         self.backup_btn.clicked.connect(self._on_backup)
+        self.quick_backup_btn = PushButton("Respaldo rápido")
+        self.quick_backup_btn.clicked.connect(self._on_quick_backup)
         self.restore_btn = PushButton("Restaurar datos")
         self.restore_btn.clicked.connect(self._on_restore)
         backup_row.addWidget(self.backup_btn)
+        backup_row.addWidget(self.quick_backup_btn)
         backup_row.addWidget(self.restore_btn)
         backup_row.addStretch(1)
         layout.addLayout(backup_row)
+
+        self.integrity_btn = PushButton("Verificar audios")
+        self.integrity_btn.clicked.connect(self._on_check_integrity)
+        layout.addWidget(self.integrity_btn)
 
         layout.addStretch(1)
 
@@ -102,6 +109,8 @@ class SettingsView(QWidget):
     def _on_backup(self) -> None:
         from PyQt5.QtWidgets import QFileDialog
 
+        from ui import settings as app_settings
+
         dest, _ = QFileDialog.getSaveFileName(
             self, "Respaldar datos (BD + audios)", "guilliman_backup.zip",
             "Respaldo (*.zip)",
@@ -112,10 +121,49 @@ class SettingsView(QWidget):
             dest += ".zip"
         try:
             path = self.app.service.backup_data(dest)
+            app_settings.save_last_backup_at()
         except Exception as exc:  # noqa: BLE001 - fallo de I/O
             show_error(self, f"No se pudo crear el respaldo:\n{exc}")
             return
         show_info(self, f"Respaldo creado:\n{path}")
+
+    def _on_quick_backup(self) -> None:
+        """Respaldo en la carpeta de la app, con rotación automática."""
+        from ui import settings as app_settings
+
+        try:
+            path = self.app.service.backup_data()
+            app_settings.save_last_backup_at()
+        except Exception as exc:  # noqa: BLE001 - fallo de I/O
+            show_error(self, f"No se pudo crear el respaldo:\n{exc}")
+            return
+        show_info(self, f"Respaldo rápido creado:\n{path}")
+
+    def _on_check_integrity(self) -> None:
+        """Verifica que los audios referenciados existan en el almacén local."""
+        from PyQt5.QtWidgets import QMessageBox
+
+        try:
+            issues = self.app.service.check_audio_integrity()
+        except Exception as exc:  # noqa: BLE001 - se informa al usuario
+            show_error(self, f"No se pudo verificar los audios:\n{exc}")
+            return
+        if not issues:
+            show_info(self, "Integridad de audios: todos los archivos están presentes.")
+            return
+        labels = {
+            "missing": "archivo faltante",
+            "outside_store": "ruta fuera del almacén",
+        }
+        lines = [
+            f"• {issue.case_number} — {issue.scheduled_at:%d/%m/%Y %H:%M} — "
+            f"{issue.audio_filename or issue.audio_path} "
+            f"({labels.get(issue.reason, issue.reason)})"
+            for issue in issues[:20]
+        ]
+        if len(issues) > 20:
+            lines.append(f"... y {len(issues) - 20} más")
+        QMessageBox.warning(self, "Integridad de audios", "\n".join(lines))
 
     def _on_restore(self) -> None:
         from PyQt5.QtWidgets import QFileDialog, QMessageBox
