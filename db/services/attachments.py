@@ -6,10 +6,12 @@ import shutil
 import uuid
 from pathlib import Path
 
+from sqlalchemy import select
+
 from ..database import get_app_data_dir, session_scope
 from ..exceptions import CaseFileNotFoundError
 from ..models import Attachment, CaseFile
-from ..schemas import AttachmentCreate
+from ..schemas import AttachmentCreate, AttachmentIntegrityIssue
 from ._base import _ServiceMixin
 
 
@@ -86,3 +88,43 @@ class AttachmentMethods(_ServiceMixin):
             session.delete(attachment)
             self._delete_stored_attachment(rel_path)
             return True
+
+    def check_attachment_integrity(self) -> list[AttachmentIntegrityIssue]:
+        """Lista adjuntos referenciados que faltan o viven fuera del almacén.
+
+        Returns:
+            Lista de ``AttachmentIntegrityIssue`` ordenada por expediente y
+            nombre del adjunto. Vacía si todos los adjuntos existen dentro de
+            ``<data_dir>/attachments/``.
+        """
+        statement = (
+            select(Attachment, CaseFile.case_number)
+            .join(CaseFile, Attachment.case_file_id == CaseFile.id)
+            .order_by(CaseFile.case_number, Attachment.name)
+        )
+        data_dir = get_app_data_dir().resolve()
+        attachment_dir = (data_dir / "attachments").resolve()
+        issues: list[AttachmentIntegrityIssue] = []
+        with session_scope(self._db_path) as session:
+            for attachment, case_number in session.execute(statement).all():
+                target = (data_dir / attachment.rel_path).resolve()
+                try:
+                    target.relative_to(attachment_dir)
+                except ValueError:
+                    reason = "outside_store"
+                else:
+                    reason = None if target.is_file() else "missing"
+                if reason is None:
+                    continue
+                issues.append(
+                    AttachmentIntegrityIssue(
+                        attachment_id=attachment.id,
+                        case_file_id=attachment.case_file_id,
+                        case_number=case_number,
+                        name=attachment.name,
+                        rel_path=attachment.rel_path,
+                        original_filename=attachment.original_filename,
+                        reason=reason,
+                    )
+                )
+        return issues
