@@ -26,6 +26,8 @@ from ..schemas import (
     CaseFileUpdate,
     CrimeCreate,
     DefendantCreate,
+    DefendantRead,
+    DuplicateNationalIdItem,
     DocumentaryCreate,
     ExpertCreate,
     HearingScheduleCreate,
@@ -200,6 +202,57 @@ class CaseFileMethods(_ServiceMixin):
         with session_scope(self._db_path) as session:
             results = session.execute(statement).scalars().unique().all()
             return [self._to_case_file_read(case_file) for case_file in results]
+
+    def find_duplicate_national_id(
+        self,
+        national_id: str,
+        exclude_case_file_id: int | None = None,
+    ) -> list[DuplicateNationalIdItem]:
+        """Busca acusados, víctimas y testigos con la misma cédula en expedientes activos.
+
+        Se ignora la cédula vacía o nula. Se excluye el expediente indicado (útil
+        al editar una persona dentro de su propio expediente).
+
+        Returns:
+            Lista de ``DuplicateNationalIdItem`` ordenada por tipo de entidad,
+            expediente y nombre. Vacía si no hay coincidencias.
+        """
+        target = national_id.strip()
+        if not target:
+            return []
+
+        def _rows(model, entity_type: str) -> list[DuplicateNationalIdItem]:
+            sub = (
+                select(model, CaseFile.case_number)
+                .join(CaseFile, model.case_file_id == CaseFile.id)
+                .where(model.national_id == target)
+                .where(CaseFile.archived_at.is_(None))
+            )
+            if exclude_case_file_id is not None:
+                sub = sub.where(CaseFile.id != exclude_case_file_id)
+            rows: list[DuplicateNationalIdItem] = []
+            with session_scope(self._db_path) as session:
+                for person, case_number in session.execute(sub).all():
+                    rows.append(
+                        DuplicateNationalIdItem(
+                            entity_type=entity_type,
+                            entity_id=person.id,
+                            full_name=person.full_name,
+                            national_id=target,
+                            case_file_id=person.case_file_id,
+                            case_number=case_number,
+                        )
+                    )
+            return rows
+
+        duplicates: list[DuplicateNationalIdItem] = []
+        duplicates.extend(_rows(Defendant, "defendant"))
+        duplicates.extend(_rows(Victim, "victim"))
+        duplicates.extend(_rows(Witness, "witness"))
+        duplicates.sort(
+            key=lambda d: (d.entity_type, d.case_number, d.full_name)
+        )
+        return duplicates
 
     def count_case_files(
         self,
