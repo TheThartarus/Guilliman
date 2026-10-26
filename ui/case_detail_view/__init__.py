@@ -38,7 +38,7 @@ from qfluentwidgets import (
 from db import CaseFileRead
 
 from ui.dialogs import confirm_delete, pick_save_pdf
-from ui.exporters import export_case_pdf
+from ui.exporters import export_case_bundle, export_case_pdf
 from ui.shared import (
     HEARING_STATUS_LABELS,
     HEARING_TYPE_LABELS,
@@ -115,9 +115,12 @@ class CaseDetailView(
         self.archive_btn.clicked.connect(self._on_archive)
         self.export_btn = PushButton("Exportar PDF")
         self.export_btn.clicked.connect(self._on_export)
+        self.bundle_btn = PushButton("Para llevar")
+        self.bundle_btn.clicked.connect(self._on_bundle)
         header.addWidget(self.edit_btn)
         header.addWidget(self.archive_btn)
         header.addWidget(self.export_btn)
+        header.addWidget(self.bundle_btn)
         layout.addLayout(header)
 
         # Datos del expediente (identificación y estado)
@@ -333,3 +336,32 @@ class CaseDetailView(
             show_error(self, f"Error al exportar: {exc}")
             return
         show_info(self, "PDF del expediente generado.")
+
+    def _on_bundle(self) -> None:
+        """Zip del expediente: PDF, audios y adjuntos de esta causa."""
+        if self._case is None:
+            return
+        from PyQt5.QtWidgets import QFileDialog
+
+        dest, _ = QFileDialog.getSaveFileName(
+            self,
+            "Expediente para llevar",
+            f"expediente_{self._case.case_number}.zip",
+            "Zip (*.zip)",
+        )
+        if not dest:
+            return
+        if not dest.lower().endswith(".zip"):
+            dest += ".zip"
+        try:
+            included, missing = self.app.service.case_portable_files(self._case)
+            export_case_bundle(self._case, dest, included)
+        except Exception as exc:  # noqa: BLE001 - se informa al usuario
+            logger.exception("Error al empaquetar expediente %s", self.case_file_id)
+            show_error(self, f"Error al empaquetar: {exc}")
+            return
+        message = "Expediente empaquetado."
+        if missing:
+            message += "\nNo se incluyeron:\n" + "\n".join(missing)
+        show_info(self, message)
+

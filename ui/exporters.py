@@ -9,7 +9,11 @@ db. No depende de ningún toolkit de UI: solo depende de ``reportlab``, los esqu
 from __future__ import annotations
 
 import csv
+import os
+import tempfile
+import zipfile
 from datetime import date, datetime, timedelta, timezone
+from pathlib import Path
 from xml.sax.saxutils import escape as _xml_escape
 
 from reportlab.lib import colors
@@ -939,3 +943,29 @@ def export_statistics_pdf(summary: StatisticsSummary, filepath: str) -> None:
         title="Guilliman - Estadísticas",
     )
     doc.build(story)
+
+
+def _bundle_token(case_number: str) -> str:
+    cleaned = "".join(ch if ch not in '\\/:*?"<>|' else "_" for ch in case_number).strip()
+    return cleaned or "expediente"
+
+
+def export_case_bundle(
+    case: CaseFileRead,
+    dest_zip: str,
+    files: list[tuple[str, str]],
+) -> None:
+    """Zip con el PDF del expediente y los archivos locales indicados."""
+    dest = Path(dest_zip)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    fd, pdf_path = tempfile.mkstemp(suffix=".pdf")
+    os.close(fd)
+    try:
+        export_case_pdf(case, pdf_path)
+        with zipfile.ZipFile(dest, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+            archive.write(pdf_path, f"expediente_{_bundle_token(case.case_number)}.pdf")
+            for src, arcname in files:
+                archive.write(src, arcname)
+    finally:
+        Path(pdf_path).unlink(missing_ok=True)
+

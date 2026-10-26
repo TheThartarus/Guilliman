@@ -8,7 +8,9 @@ from datetime import date, datetime
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
-from ..database import session_scope
+from pathlib import Path
+
+from ..database import get_app_data_dir, session_scope
 from ..exceptions import CaseFileNotFoundError, DuplicateCaseNumberError
 from ..models import (
     CaseFile,
@@ -430,3 +432,50 @@ class CaseFileMethods(_ServiceMixin):
             for rel_path in attachment_paths:
                 self._delete_stored_attachment(rel_path)
             return True
+
+
+    def case_portable_files(
+        self, case: CaseFileRead
+    ) -> tuple[list[tuple[str, str]], list[str]]:
+        """Archivos del expediente que pueden viajar en el zip.
+
+        Returns:
+            ``(incluidos, omitidos)``. Cada incluido es
+            ``(ruta_absoluta, nombre_en_zip)``. Se omiten rutas fuera de
+            ``audios/`` o ``attachments/`` y archivos que ya no están en disco.
+        """
+        data_dir = get_app_data_dir().resolve()
+        included: list[tuple[str, str]] = []
+        missing: list[str] = []
+
+        def consider(rel: str, store: str, arc: str) -> None:
+            target = (data_dir / rel).resolve()
+            try:
+                target.relative_to((data_dir / store).resolve())
+            except ValueError:
+                missing.append(arc)
+                return
+            if not target.is_file():
+                missing.append(arc)
+                return
+            included.append((str(target), arc))
+
+        for hearing in case.hearings:
+            if not hearing.audio_path:
+                continue
+            name = _portable_arc_name(
+                hearing.audio_filename or Path(hearing.audio_path).name
+            )
+            consider(hearing.audio_path, "audios", f"audios/{hearing.id}_{name}")
+        for attachment in case.attachments:
+            name = _portable_arc_name(attachment.original_filename or attachment.name)
+            consider(attachment.rel_path, "attachments", f"attachments/{attachment.id}_{name}")
+        return included, missing
+
+
+
+def _portable_arc_name(name: str) -> str:
+    """Nombre de archivo seguro para meter en el zip."""
+    cleaned = "".join(ch if ch not in '\\/:*?"<>|' else "_" for ch in name).strip()
+    return cleaned or "archivo"
+
