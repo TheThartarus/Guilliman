@@ -14,6 +14,7 @@ from ..exceptions import CaseFileNotFoundError
 from ..models import CaseFile, HearingSchedule
 from ..schemas import (
     AudioIntegrityIssue,
+    HearingClashItem,
     HearingScheduleCreate,
     HearingScheduleUpdate,
     ScheduledHearingItem,
@@ -126,6 +127,47 @@ class HearingMethods(_ServiceMixin):
         )
         with session_scope(self._db_path) as session:
             return session.execute(statement).scalar_one()
+
+    def find_hearing_clashes(
+        self,
+        scheduled_at: datetime,
+        exclude_hearing_id: int | None = None,
+    ) -> list[HearingClashItem]:
+        """Busca otras audiencias (de expedientes activos) con la misma fecha/hora.
+
+        Útil para detectar choques de agenda antes de crear o mover una audiencia.
+
+        Args:
+            scheduled_at: Fecha/hora de la audiencia a validar.
+            exclude_hearing_id: Audiencia a excluir del resultado (útil al editar
+                una audiencia existente para no chocar contra sí misma).
+
+        Returns:
+            Lista de ``HearingClashItem`` ordenada por expediente y fecha.
+        """
+        statement = (
+            select(HearingSchedule, CaseFile.case_number)
+            .join(CaseFile, HearingSchedule.case_file_id == CaseFile.id)
+            .where(HearingSchedule.scheduled_at == scheduled_at)
+            .where(CaseFile.archived_at.is_(None))
+        )
+        if exclude_hearing_id is not None:
+            statement = statement.where(HearingSchedule.id != exclude_hearing_id)
+        statement = statement.order_by(CaseFile.case_number, HearingSchedule.id)
+        clashes: list[HearingClashItem] = []
+        with session_scope(self._db_path) as session:
+            for hearing, case_number in session.execute(statement).all():
+                clashes.append(
+                    HearingClashItem(
+                        hearing_id=hearing.id,
+                        case_file_id=hearing.case_file_id,
+                        case_number=case_number,
+                        scheduled_at=hearing.scheduled_at,
+                        hearing_type=hearing.hearing_type,
+                        status=hearing.status,
+                    )
+                )
+        return clashes
 
     def check_audio_integrity(self) -> list[AudioIntegrityIssue]:
         """Lista audios referenciados que faltan o viven fuera del almacén.

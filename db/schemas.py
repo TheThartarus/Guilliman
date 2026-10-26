@@ -497,6 +497,40 @@ class ScheduledHearingItem(BaseModel):
     has_transcription: bool = False
 
 
+class HearingClashItem(BaseModel):
+    """Otra audiencia programada en la misma fecha y hora (posible choque)."""
+
+    hearing_id: int
+    case_file_id: int
+    case_number: str
+    scheduled_at: datetime
+    hearing_type: str | None = None
+    status: str
+
+
+class DuplicateNationalIdItem(BaseModel):
+    """Persona con cédula repetida en otro expediente activo."""
+
+    entity_type: str  # "defendant" | "victim" | "witness"
+    entity_id: int
+    full_name: str
+    national_id: str
+    case_file_id: int
+    case_number: str
+
+
+class AttachmentIntegrityIssue(BaseModel):
+    """Inconsistencia detectada en el almacén local de adjuntos."""
+
+    attachment_id: int
+    case_file_id: int
+    case_number: str
+    name: str
+    rel_path: str
+    original_filename: str | None = None
+    reason: str  # "missing" | "outside_store"
+
+
 class AudioIntegrityIssue(BaseModel):
     """Inconsistencia detectada en el almacén local de audios."""
 
@@ -525,3 +559,9 @@ class StatisticsSummary(BaseModel):
     cases_by_crime_type: list[CountItem] = []
     cases_by_prosecutor: list[CountItem] = []
     hearings_by_month: list[CountItem] = []
+    hearings_by_status: list[CountItem] = []
+    cases_by_verdict_status: list[CountItem] = []
+    emblematic_cases: int = 0
+    cases_missing_audio: int = 0
+    cases_missing_transcription: int = 0
+    detention_alerts_count: int = 0
