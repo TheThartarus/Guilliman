@@ -11,13 +11,12 @@ from PyQt5.QtGui import QBrush, QColor, QDesktopServices
 from PyQt5.QtWidgets import (
     QFileDialog,
     QHBoxLayout,
-    QMenu,
     QTableWidgetItem,
     QVBoxLayout,
     QWidget,
 )
 
-from qfluentwidgets import PushButton, SubtitleLabel, TableWidget
+from qfluentwidgets import Action, PushButton, RoundMenu, SubtitleLabel, TableWidget
 
 from db import CaseFileRead
 
@@ -151,8 +150,15 @@ class _HearingsSection:
         show_info(self, "Audiencia duplicada (+7 días).")
         self.load()
 
+    @staticmethod
+    def _add_menu_action(menu: RoundMenu, text: str, callback) -> None:
+        """Agrega una acción Fluent al menú contextual."""
+        action = Action(text)
+        action.triggered.connect(lambda *_: callback())
+        menu.addAction(action)
+
     def _on_hearing_context_menu(self, pos) -> None:
-        """Menú contextual: editar el acta y abrir el audio de la audiencia."""
+        """Menú contextual Fluent para editar/exportar la audiencia."""
         row = self.hearings_table.rowAt(pos.y())
         if not (0 <= row < len(self._hearing_rows)):
             return
@@ -161,26 +167,31 @@ class _HearingsSection:
         )
         if hearing is None:
             return
-        menu = QMenu(self.hearings_table)
-        menu.addAction("Editar acta", lambda: self._open_transcription(hearing))
-        menu.addAction(
-            "Duplicar (+7 días)", lambda: self._duplicate_hearing(hearing)
+        menu = RoundMenu(parent=self)
+        self._add_menu_action(
+            menu, "Editar acta", lambda: self._open_transcription(hearing)
+        )
+        self._add_menu_action(
+            menu, "Duplicar (+7 días)", lambda: self._duplicate_hearing(hearing)
         )
         if hearing.transcription:
-            menu.addAction(
-                "Exportar acta (PDF)", lambda: self._export_minutes(hearing, "pdf")
+            self._add_menu_action(
+                menu, "Exportar acta (PDF)",
+                lambda: self._export_minutes(hearing, "pdf"),
             )
-            menu.addAction(
-                "Exportar acta (RTF)", lambda: self._export_minutes(hearing, "rtf")
+            self._add_menu_action(
+                menu, "Exportar acta (RTF)",
+                lambda: self._export_minutes(hearing, "rtf"),
             )
-            menu.addAction(
-                "Imprimir acta", lambda: self._print_minutes(hearing)
+            self._add_menu_action(
+                menu, "Imprimir acta", lambda: self._print_minutes(hearing)
             )
         if hearing.audio_path:
-            menu.addAction(
-                "Abrir audio", lambda: self._open_hearing_audio(hearing.audio_path)
+            self._add_menu_action(
+                menu, "Abrir audio",
+                lambda: self._open_hearing_audio(hearing.audio_path),
             )
-        menu.exec_(self.hearings_table.viewport().mapToGlobal(pos))
+        menu.exec(self.hearings_table.viewport().mapToGlobal(pos))
 
     def _export_minutes(self, hearing, kind: str) -> None:
         """Exporta el acta de la audiencia seleccionada a PDF o RTF."""
