@@ -31,6 +31,7 @@ from .migrations import apply_migrations, sync_missing_columns
 from .models import Base
 from .services.backups import BackupMethods
 from .services.case_files import CaseFileMethods
+from .services.case_links import CaseLinkMethods
 from .services.crimes import CrimeMethods
 from .services.defendants import DefendantMethods
 from .services.documentaries import DocumentaryMethods
@@ -53,6 +54,7 @@ class CaseFileService(
     ExpertMethods,
     ActingOfficialMethods,
     AttachmentMethods,
+    CaseLinkMethods,
     HearingMethods,
     StatisticsMethods,
     BackupMethods,

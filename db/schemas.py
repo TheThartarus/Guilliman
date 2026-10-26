@@ -543,6 +543,14 @@ class AudioIntegrityIssue(BaseModel):
     reason: str  # "missing" | "outside_store"
 
 
+class LinkedCaseItem(BaseModel):
+    """Expediente vinculado al que se está consultando."""
+
+    link_id: int
+    case_file_id: int
+    case_number: str
+
+
 class CountItem(BaseModel):
     """Par etiqueta/recuento para reportes estadísticos."""
 

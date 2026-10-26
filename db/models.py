@@ -18,7 +18,18 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Text, func
+from sqlalchemy import (
+    Boolean,
+    Date,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -362,3 +373,30 @@ class Crime(Base):
 
     def __repr__(self) -> str:
         return f"<Crime id={self.id} crime_type={self.crime_type!r}>"
+
+
+class CaseLink(Base):
+    """Vínculo simétrico entre dos expedientes (tabla: ``case_links``).
+
+    La pareja se guarda ordenada (``case_file_id`` < ``related_case_file_id``)
+    para que A–B y B–A sean la misma fila.
+    """
+
+    __tablename__ = "case_links"
+    __table_args__ = (
+        UniqueConstraint("case_file_id", "related_case_file_id", name="uq_case_link"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    case_file_id: Mapped[int] = mapped_column(
+        ForeignKey("case_files.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    related_case_file_id: Mapped[int] = mapped_column(
+        ForeignKey("case_files.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"<CaseLink id={self.id} "
+            f"{self.case_file_id}->{self.related_case_file_id}>"
+        )

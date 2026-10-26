@@ -55,6 +55,7 @@ from ._defendants import _DefendantsSection
 from ._documentaries import _DocumentariesSection
 from ._experts import _ExpertsSection
 from ._hearings import _HearingsSection, _split_hearings
+from ._links import _LinksSection
 from ._victims import _VictimsSection
 from ._witnesses import _WitnessesSection
 
@@ -71,6 +72,7 @@ class CaseDetailView(
     _ExpertsSection,
     _ActingOfficialsSection,
     _HearingsSection,
+    _LinksSection,
     QWidget,
 ):
     """Vista de detalles de un expediente (solo lectura + acciones)."""
@@ -199,6 +201,7 @@ class CaseDetailView(
         layout.addWidget(self._build_attachments_section())
         layout.addWidget(self._build_experts_section())
         layout.addWidget(self._build_acting_officials_section())
+        layout.addWidget(self._build_links_section())
         layout.addWidget(self._build_hearings_section())
 
         scroll.setWidget(content)
@@ -269,6 +272,7 @@ class CaseDetailView(
         self._fill_attachments(case)
         self._fill_experts(case)
         self._fill_acting_officials(case)
+        self._fill_links(case)
         self._fill_hearings(case)
 
     def refresh(self) -> None:
