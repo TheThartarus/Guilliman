@@ -549,7 +549,7 @@ def export_hearing_minutes_rtf(
     """Genera la transcripción de una audiencia en RTF (editable en Word/LibreOffice)."""
     chunks: list[str] = [
         "{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 Calibri;}}\\fs24\n",
-        "\\qc\\b\\fs32 TRANSCRIPCIÓN DE AUDIENCIA\\b0\\fs24\\par\n",
+        "\\qc\\b\\fs32 TRANSCRIPCION DE AUDIENCIA\\b0\\fs24\\par\n",
         "\\par\n",
     ]
 
