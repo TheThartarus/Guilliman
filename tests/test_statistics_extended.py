@@ -25,7 +25,7 @@ def test_statistics_extended_fields(tmp_path, monkeypatch) -> None:
     try:
         when = datetime(2026, 5, 10, 9, 0)
 
-        # Caso 1: activo, delito Droga, veredicto Condena, con audio y acta.
+        # Caso 1: activo, delito Droga, veredicto Condena, con audio y transcripción.
         case_1 = service.create_case_file(
             CaseFileCreate(case_number="SE-1", prosecutor_name="Fiscal A", is_emblematic=True),
             crimes_list=[CrimeCreate(crime_type="Droga")],
@@ -34,7 +34,7 @@ def test_statistics_extended_fields(tmp_path, monkeypatch) -> None:
                     scheduled_at=when,
                     status="Completed",
                     audio_path="audios/x.mp3",
-                    transcription="acta",
+                    transcription="transcripcion de prueba",
                 )
             ],
         )
@@ -48,7 +48,7 @@ def test_statistics_extended_fields(tmp_path, monkeypatch) -> None:
             ),
         )
 
-        # Caso 2: activo, delito Armas, veredicto Pendiente, audiencia sin audio ni acta.
+        # Caso 2: activo, delito Armas, veredicto Pendiente, audiencia sin audio ni transcripción.
         case_2 = service.create_case_file(
             CaseFileCreate(case_number="SE-2", prosecutor_name="Fiscal B"),
             crimes_list=[CrimeCreate(crime_type="Armas")],

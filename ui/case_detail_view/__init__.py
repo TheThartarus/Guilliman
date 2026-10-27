@@ -115,7 +115,7 @@ class CaseDetailView(
         self.archive_btn.clicked.connect(self._on_archive)
         self.export_btn = PushButton("Exportar PDF")
         self.export_btn.clicked.connect(self._on_export)
-        self.bundle_btn = PushButton("Para llevar")
+        self.bundle_btn = PushButton("Extraer")
         self.bundle_btn.clicked.connect(self._on_bundle)
         header.addWidget(self.edit_btn)
         header.addWidget(self.archive_btn)
@@ -345,7 +345,7 @@ class CaseDetailView(
 
         dest, _ = QFileDialog.getSaveFileName(
             self,
-            "Expediente para llevar",
+            "Expediente para extraer",
             f"expediente_{self._case.case_number}.zip",
             "Zip (*.zip)",
         )

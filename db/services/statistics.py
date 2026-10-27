@@ -121,7 +121,7 @@ class StatisticsMethods(_ServiceMixin):
                 .where(HearingSchedule.audio_path.is_(None))
             ).scalar_one()
 
-            # Casos activos con al menos una audiencia sin acta.
+            # Casos activos con al menos una audiencia sin transcripción.
             cases_missing_transcription = session.execute(
                 select(func.count(func.distinct(CaseFile.id)))
                 .select_from(CaseFile)

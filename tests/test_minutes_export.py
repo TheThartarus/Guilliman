@@ -1,4 +1,4 @@
-"""Test de la exportación del acta de audiencia a RTF y PDF."""
+"""Test de la exportación de la transcripción de audiencia a RTF y PDF."""
 
 import os
 import sys
@@ -32,7 +32,7 @@ def test_minutes_export_rtf_and_pdf(tmp_path, monkeypatch) -> None:
     try:
         case_id = service.create_case_file(
             CaseFileCreate(
-                case_number="ACTA-1",
+                case_number="TRANSCRIPCION-1",
                 prosecutor_name="Fiscal",
             ),
             crimes_list=[CrimeCreate(crime_type="Armas")],
@@ -58,21 +58,21 @@ def test_minutes_export_rtf_and_pdf(tmp_path, monkeypatch) -> None:
         service.update_hearing(
             hearing.id,
             HearingScheduleUpdate(
-                transcription="ACTA DE PRUEBA\n\nSegunda línea con ñ, á, é."
+                transcription="TRANSCRIPCION DE PRUEBA\n\nSegunda línea con ñ, á, é."
             ),
         )
         case = service.get_case_file_by_id(case_id)
         hearing = case.hearings[0]
 
-        rtf_path = tmp_path / "acta.rtf"
-        pdf_path = tmp_path / "acta.pdf"
+        rtf_path = tmp_path / "transcripcion.rtf"
+        pdf_path = tmp_path / "transcripcion.pdf"
         export_hearing_minutes_rtf(case, hearing, str(rtf_path))
         export_hearing_minutes_pdf(case, hearing, str(pdf_path))
 
         assert rtf_path.is_file()
         rtf = rtf_path.read_text(encoding="ascii")
         assert rtf.startswith("{\\rtf1")
-        assert "ACTA DE PRUEBA" in rtf
+        assert "TRANSCRIPCION DE PRUEBA" in rtf
         assert "Juan Perez" in rtf
 
         assert pdf_path.is_file()

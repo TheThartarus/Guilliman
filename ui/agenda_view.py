@@ -79,7 +79,7 @@ class AgendaView(QWidget):
         self.pending_filter = ComboBox()
         self.pending_filter.addItem("Todas", userData="")
         self.pending_filter.addItem("Sin audio", userData="audio")
-        self.pending_filter.addItem("Sin acta", userData="acta")
+        self.pending_filter.addItem("Sin transcripción", userData="transcription")
         self.pending_filter.currentIndexChanged.connect(self.refresh)
         filter_row.addWidget(BodyLabel("Desde:"))
         filter_row.addWidget(self.start_date, 1)
@@ -98,7 +98,7 @@ class AgendaView(QWidget):
         self.clear_btn.clicked.connect(self._on_clear_filters)
         self.export_btn = PushButton("Exportar PDF")
         self.export_btn.clicked.connect(self._on_export)
-        self.export_ics_btn = PushButton("Exportar .ics")
+        self.export_ics_btn = PushButton("Exportar ICS")
         self.export_ics_btn.clicked.connect(self._on_export_ics)
         actions_row.addWidget(self.filter_btn)
         actions_row.addWidget(self.clear_btn)
@@ -165,11 +165,11 @@ class AgendaView(QWidget):
         return combo_current_data(self.status_filter) or None
 
     def _apply_pending_filter(self, items: list) -> list:
-        """Filtra audiencias por pendiente de audio o de acta."""
+        """Filtra audiencias por pendiente de audio o de transcripción."""
         pending = combo_current_data(self.pending_filter)
         if pending == "audio":
             return [item for item in items if not item.has_audio]
-        if pending == "acta":
+        if pending == "transcription":
             return [item for item in items if not item.has_transcription]
         return items
 
@@ -183,7 +183,7 @@ class AgendaView(QWidget):
         self.refresh()
 
     def show_pending(self, kind: str) -> None:
-        """Configura la agenda para audiencias sin audio o sin acta."""
+        """Configura la agenda para audiencias sin audio o sin transcripción."""
         self.start_date.setDate(QDate(2000, 1, 1))
         self.end_date.setDate(QDate(2100, 12, 31))
         self.status_filter.setCurrentIndex(0)
@@ -311,7 +311,7 @@ class AgendaView(QWidget):
         try:
             export_agenda_ics(items, path)
         except Exception as exc:  # noqa: BLE001 - se informa al usuario
-            logger.exception("Error al exportar .ics de agenda")
+            logger.exception("Error al exportar ICS de agenda")
             show_error(self, f"Error al exportar: {exc}")
             return
-        show_info(self, "Agenda .ics exportada.")
+        show_info(self, "Agenda ICS exportada.")

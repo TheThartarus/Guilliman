@@ -1,4 +1,4 @@
-"""Test del HTML imprimible del acta (escape de texto)."""
+"""Test del HTML imprimible de la transcripción (escape de texto)."""
 
 import os
 import sys
@@ -27,7 +27,7 @@ def test_hearing_minutes_html_escapes_text() -> None:
 
     html = hearing_minutes_html(case, hearing)
 
-    assert "ACTA DE AUDIENCIA" in html
+    assert "TRANSCRIPCIÓN DE AUDIENCIA" in html
     assert "A-1" in html
     assert "Fiscal &lt;X&gt;" in html
     assert "Línea 1<br>Línea 2 &amp; &lt;b&gt;" in html

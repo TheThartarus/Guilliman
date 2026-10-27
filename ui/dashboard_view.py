@@ -84,8 +84,8 @@ class DashboardView(QWidget):
         self.no_audio_card = _StatCard(
             "Audiencias sin audio", lambda: self._open_pending("audio")
         )
-        self.no_acta_card = _StatCard(
-            "Audiencias sin acta", lambda: self._open_pending("acta")
+        self.no_transcription_card = _StatCard(
+            "Audiencias sin transcripción", lambda: self._open_pending("transcription")
         )
         self.detention_card = _StatCard(
             "Alertas de detención", self._open_detention
@@ -94,7 +94,7 @@ class DashboardView(QWidget):
             self.cases_card,
             self.week_card,
             self.no_audio_card,
-            self.no_acta_card,
+            self.no_transcription_card,
             self.detention_card,
         ):
             cards.addWidget(card, 1)
@@ -110,7 +110,7 @@ class DashboardView(QWidget):
         self.table.setBorderVisible(True)
         self.table.setColumnCount(6)
         self.table.setHorizontalHeaderLabels(
-            ["Fecha/Hora", "Expediente", "Tipo", "Estado", "Acta", "Audio"]
+            ["Fecha/Hora", "Expediente", "Tipo", "Estado", "Transcripción", "Audio"]
         )
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.table.cellDoubleClicked.connect(self._on_row_double)
@@ -125,7 +125,7 @@ class DashboardView(QWidget):
                 now, now + timedelta(days=7), status="Scheduled"
             )
             missing_audio = self.app.service.count_hearings_missing_audio()
-            missing_acta = self.app.service.count_hearings_missing_transcription()
+            missing_transcription = self.app.service.count_hearings_missing_transcription()
             threshold = app_settings.load_detention_alert_days()
             detention_alerts = self.app.service.list_detention_alerts(threshold)
         except ValueError as exc:
@@ -136,7 +136,7 @@ class DashboardView(QWidget):
         self.cases_card.set_value(total_cases)
         self.week_card.set_value(len(upcoming))
         self.no_audio_card.set_value(missing_audio)
-        self.no_acta_card.set_value(missing_acta)
+        self.no_transcription_card.set_value(missing_transcription)
         self.detention_card.set_value(len(detention_alerts))
 
         self._update_backup_label()

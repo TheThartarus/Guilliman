@@ -44,9 +44,9 @@ Compact guidance for agents working in this repo. Signals only.
   (gitignored; in dev that is the repo root). Public API: `store_audio_file(src) ->
   (rel_path, filename)` and `get_audio_abs_path(rel)`. Cleanup is automatic when the
   audio is replaced/cleared, a hearing is deleted, or its parent case file is deleted.
-- **Hearing minutes (acta)**: `HearingSchedule.transcription` stores free text (never
+- **Hearing minutes (transcripción)**: `HearingSchedule.transcription` stores free text (never
   uppercased or filtered). It is edited via `HearingTranscriptionDialog`, shown as an
-  "Acta" column in the detail table, and exported to PDF/RTF by `ui.exporters`
+  "Transcripción" column in the detail table, and exported to PDF/RTF by `ui.exporters`
   (`export_hearing_minutes_pdf` / `export_hearing_minutes_rtf`).
 - **Attachments**: each case file can store documents in `<data_dir>/attachments/`
   (`attachments` table, relative `rel_path`). Public API: `add_attachment(case_id,

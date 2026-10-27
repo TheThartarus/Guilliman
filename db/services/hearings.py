@@ -117,7 +117,7 @@ class HearingMethods(_ServiceMixin):
             return session.execute(statement).scalar_one()
 
     def count_hearings_missing_transcription(self) -> int:
-        """Cuenta las audiencias (de expedientes activos) sin acta registrada."""
+        """Cuenta las audiencias (de expedientes activos) sin transcripción registrada."""
         statement = (
             select(func.count())
             .select_from(HearingSchedule)
@@ -278,7 +278,7 @@ class HearingMethods(_ServiceMixin):
         """Duplica una audiencia programándola ``days`` días después.
 
         Copia tipo y notas; el estado vuelve a ``Scheduled`` y no copia audio
-        ni acta (son propios de la audiencia original).
+        ni transcripción (son propios de la audiencia original).
 
         Returns:
             El ID de la nueva audiencia, o ``None`` si la original no existe.

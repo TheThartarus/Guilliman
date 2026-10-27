@@ -1,4 +1,4 @@
-"""Impresión directa del acta de una audiencia (sin pasar por el PDF)."""
+"""Impresión directa de la transcripción de una audiencia (sin pasar por el PDF)."""
 
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ def _multiline(value) -> str:
 
 
 def hearing_minutes_html(case: CaseFileRead, hearing: HearingScheduleRead) -> str:
-    """Construye el HTML imprimible del acta (texto escapado)."""
+    """Construye el HTML imprimible de la transcripción (texto escapado)."""
     parties: list[tuple[str, str]] = []
     parties.extend(("Acusado", d.full_name) for d in case.defendants)
     parties.extend(("Víctima", v.full_name) for v in case.victims)
@@ -41,7 +41,7 @@ def hearing_minutes_html(case: CaseFileRead, hearing: HearingScheduleRead) -> st
     return f"""
     <html><head><meta charset="utf-8"></head>
     <body style="font-family: Calibri, Arial; font-size: 11pt;">
-      <h2 style="text-align:center;">ACTA DE AUDIENCIA</h2>
+      <h2 style="text-align:center;">TRANSCRIPCIÓN DE AUDIENCIA</h2>
       <table cellspacing="0" cellpadding="4" width="100%">
         <tr><td><b>Expediente:</b></td><td>{_text(case.case_number)}</td></tr>
         <tr><td><b>MP:</b></td><td>{_text(case.prosecutor_file_number)}</td></tr>
@@ -56,14 +56,14 @@ def hearing_minutes_html(case: CaseFileRead, hearing: HearingScheduleRead) -> st
         <tr><th align="left">Tipo</th><th align="left">Nombre</th></tr>
         {party_rows}
       </table>
-      <h3>Acta / Transcripción</h3>
+      <h3>Transcripción</h3>
       <p>{_multiline(hearing.transcription)}</p>
     </body></html>
     """
 
 
 def print_hearing_minutes(parent, case: CaseFileRead, hearing: HearingScheduleRead) -> bool:
-    """Abre el diálogo de impresión y envía el acta directamente.
+    """Abre el diálogo de impresión y envía la transcripción directamente.
 
     Returns:
         True si el usuario confirmó la impresión; False si canceló.

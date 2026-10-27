@@ -27,14 +27,14 @@ def test_pending_counts_and_flags(tmp_path, monkeypatch) -> None:
         hearing_plain = service.add_hearing(
             case_id, HearingScheduleCreate(scheduled_at=now + timedelta(days=1))
         )
-        hearing_acta = service.add_hearing(
+        hearing_transcription = service.add_hearing(
             case_id, HearingScheduleCreate(scheduled_at=now + timedelta(days=2))
         )
         hearing_audio = service.add_hearing(
             case_id, HearingScheduleCreate(scheduled_at=now + timedelta(days=3))
         )
         service.update_hearing(
-            hearing_acta, HearingScheduleUpdate(transcription="ACTA")
+            hearing_transcription, HearingScheduleUpdate(transcription="TRANSCRIPCIÓN")
         )
         src = tmp_path / "a.mp3"
         src.write_bytes(b"audio")
@@ -51,8 +51,8 @@ def test_pending_counts_and_flags(tmp_path, monkeypatch) -> None:
         by_id = {item.hearing_id: item for item in items}
         assert by_id[hearing_plain].has_audio is False
         assert by_id[hearing_plain].has_transcription is False
-        assert by_id[hearing_acta].has_transcription is True
-        assert by_id[hearing_acta].has_audio is False
+        assert by_id[hearing_transcription].has_transcription is True
+        assert by_id[hearing_transcription].has_audio is False
         assert by_id[hearing_audio].has_audio is True
         assert by_id[hearing_audio].has_transcription is False
     finally:

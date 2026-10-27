@@ -1,7 +1,7 @@
-"""Test del acta/transcripción de una audiencia.
+"""Test de la transcripción de una audiencia.
 
 Cubre:
-    - La audiencia nace sin acta.
+    - La audiencia nace sin transcripción.
     - ``update_hearing`` persiste la transcripción y el detalle la devuelve.
     - Un PATCH que no toca la transcripción (p. ej. solo notas) la conserva.
     - ``update_hearing`` con ``transcription=None`` la limpia.
@@ -40,19 +40,19 @@ def test_hearing_transcription_lifecycle(tmp_path, monkeypatch) -> None:
         )
         assert _hearing(service, case_id).transcription is None
 
-        acta = "ACTA DE AUDIENCIA\n\nSe dejó constancia de lo siguiente.\nFin."
+        transcripcion = "TRANSCRIPCIÓN DE AUDIENCIA\n\nSe dejó constancia de lo siguiente.\nFin."
         assert service.update_hearing(
-            hearing_id, HearingScheduleUpdate(transcription=acta)
+            hearing_id, HearingScheduleUpdate(transcription=transcripcion)
         )
-        assert _hearing(service, case_id).transcription == acta
+        assert _hearing(service, case_id).transcription == transcripcion
 
-        # Un PATCH de otro campo no debe borrar el acta.
+        # Un PATCH de otro campo no debe borrar la transcripción.
         assert service.update_hearing(
             hearing_id, HearingScheduleUpdate(notes="Nota posterior")
         )
-        assert _hearing(service, case_id).transcription == acta
+        assert _hearing(service, case_id).transcription == transcripcion
 
-        # Limpiar explícitamente el acta.
+        # Limpiar explícitamente la transcripción.
         assert service.update_hearing(
             hearing_id, HearingScheduleUpdate(transcription=None)
         )

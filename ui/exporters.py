@@ -107,7 +107,7 @@ def _crime_rows(case: CaseFileRead) -> list[tuple[str, str, str, str, str]]:
 
 
 def _crime_types_text(case: CaseFileRead) -> str:
-    """Lista de tipos de delito para encabezados de acta."""
+    """Lista de tipos de delito para encabezados de la transcripción."""
     types = [crime.crime_type for crime in case.crimes]
     return ", ".join(types) if types else "—"
 
@@ -506,7 +506,7 @@ def export_case_pdf(case: CaseFileRead, filepath: str) -> None:
 
 
 # --------------------------------------------------------------------------- #
-# Exportación del acta de una audiencia
+# Exportación de la transcripción de una audiencia
 # --------------------------------------------------------------------------- #
 def _multi_paragraph(text, style=_CELL) -> Paragraph:
     """Párrafo de reportlab que preserva los saltos de línea del texto."""
@@ -546,10 +546,10 @@ def _rtf_escape(value) -> str:
 def export_hearing_minutes_rtf(
     case: CaseFileRead, hearing: HearingScheduleRead, filepath: str
 ) -> None:
-    """Genera el acta de una audiencia en RTF (editable en Word/LibreOffice)."""
+    """Genera la transcripción de una audiencia en RTF (editable en Word/LibreOffice)."""
     chunks: list[str] = [
         "{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 Calibri;}}\\fs24\n",
-        "\\qc\\b\\fs32 ACTA DE AUDIENCIA\\b0\\fs24\\par\n",
+        "\\qc\\b\\fs32 TRANSCRIPCIÓN DE AUDIENCIA\\b0\\fs24\\par\n",
         "\\par\n",
     ]
 
@@ -584,7 +584,7 @@ def export_hearing_minutes_rtf(
         chunks.append("\\b Notas:\\b0\\par\n")
         chunks.append(f"{_rtf_escape(hearing.notes)}\\par\n\\par\n")
 
-    chunks.append(f"\\b {_rtf_escape('ACTA / TRANSCRIPCIÓN')}\\b0\\par\n")
+    chunks.append(f"\\b {_rtf_escape('TRANSCRIPCIÓN')}\\b0\\par\n")
     chunks.append(f"{_rtf_escape(hearing.transcription)}\\par\n")
     chunks.append("}")
 
@@ -595,9 +595,9 @@ def export_hearing_minutes_rtf(
 def export_hearing_minutes_pdf(
     case: CaseFileRead, hearing: HearingScheduleRead, filepath: str
 ) -> None:
-    """Genera el acta de una audiencia en PDF (listo para imprimir)."""
+    """Genera la transcripción de una audiencia en PDF (listo para imprimir)."""
     story = []
-    story.append(Paragraph("ACTA DE AUDIENCIA", _TITLE))
+    story.append(Paragraph("TRANSCRIPCIÓN DE AUDIENCIA", _TITLE))
     story.append(Spacer(1, 6))
 
     general_rows = [
@@ -648,7 +648,7 @@ def export_hearing_minutes_pdf(
         story.append(Paragraph("Notas", _HEADING))
         story.append(_multi_paragraph(hearing.notes))
 
-    story.append(Paragraph("Acta / Transcripción", _HEADING))
+    story.append(Paragraph("Transcripción", _HEADING))
     story.append(_multi_paragraph(hearing.transcription))
 
     doc = SimpleDocTemplate(
@@ -658,7 +658,7 @@ def export_hearing_minutes_pdf(
         rightMargin=15 * mm,
         topMargin=15 * mm,
         bottomMargin=15 * mm,
-        title=f"Acta - Expediente {case.case_number}",
+        title=f"Transcripción - Expediente {case.case_number}",
     )
     doc.build(story)
 

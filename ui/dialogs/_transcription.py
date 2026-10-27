@@ -1,4 +1,4 @@
-"""Editor del acta/transcripción de una audiencia."""
+"""Editor de transcripción de una audiencia."""
 
 from __future__ import annotations
 
@@ -26,9 +26,9 @@ logger = logging.getLogger("guilliman")
 
 
 class HearingTranscriptionDialog(QDialog):
-    """Edita el acta/transcripción de una audiencia existente.
+    """Edita la transcripción de una audiencia existente.
 
-    No normaliza el texto (ni mayúsculas ni filtros de caracteres): el acta es
+    No normaliza el texto (ni mayúsculas ni filtros de caracteres): la transcripción es
     un documento libre que debe conservarse tal como se pega desde el
     procesador de texto.
     """
@@ -38,17 +38,17 @@ class HearingTranscriptionDialog(QDialog):
         FluentStyleSheet.DIALOG.apply(self)
         self.app = app
         self.hearing = hearing
-        self.setWindowTitle("Acta / Transcripción")
+        self.setWindowTitle("Transcripción")
 
         self._editor = TextEdit()
         self._editor.setPlaceholderText(
-            "Pega aquí la transcripción de la audiencia o redacta el acta..."
+            "Pega aquí la transcripción de la audiencia..."
         )
         self._editor.setPlainText(hearing.transcription or "")
         self._saved_text = hearing.transcription or ""
 
-        # Autosave: guarda en la BD tras una pausa de tecleo (evita perder el
-        # acta completa si la app se cierra o falla).
+        # Autosave: guarda en la BD tras una pausa de tecleo (evita perder la
+        # transcripción completa si la app se cierra o falla).
         self._autosave_timer = QTimer(self)
         self._autosave_timer.setSingleShot(True)
         self._autosave_timer.setInterval(1500)
@@ -58,13 +58,13 @@ class HearingTranscriptionDialog(QDialog):
         layout = QVBoxLayout(self)
         layout.setSpacing(12)
         layout.addWidget(
-            SubtitleLabel(f"Acta de audiencia — {hearing.scheduled_at:%d/%m/%Y %H:%M}")
+            SubtitleLabel(f"Transcripción de audiencia — {hearing.scheduled_at:%d/%m/%Y %H:%M}")
         )
         layout.addWidget(self._editor, 1)
         layout.addWidget(CaptionLabel("Los cambios se guardan automáticamente."))
 
         buttons = QHBoxLayout()
-        self.save_btn = PrimaryPushButton("Guardar acta")
+        self.save_btn = PrimaryPushButton("Guardar transcripción")
         self.save_btn.clicked.connect(self._on_save)
         self.cancel_btn = PushButton("Cerrar")
         self.cancel_btn.clicked.connect(self.reject)
@@ -75,7 +75,7 @@ class HearingTranscriptionDialog(QDialog):
         self.resize(TRANSCRIPTION_DIALOG_WIDTH, TRANSCRIPTION_DIALOG_HEIGHT)
 
     def _autosave(self) -> bool:
-        """Guarda silenciosamente el acta si cambió desde el último guardado."""
+        """Guarda silenciosamente la transcripción si cambió desde el último guardado."""
         self._autosave_timer.stop()
         text = (self._editor.toPlainText() or "").strip() or None
         if text == self._saved_text:
@@ -86,7 +86,7 @@ class HearingTranscriptionDialog(QDialog):
             )
         except ValueError:
             logger.exception(
-                "Error al autoguardar el acta de la audiencia %s", self.hearing.id
+                "Error al autoguardar la transcripción de la audiencia %s", self.hearing.id
             )
             return False
         if ok:
@@ -107,13 +107,13 @@ class HearingTranscriptionDialog(QDialog):
             )
         except ValueError as exc:
             logger.exception(
-                "Error al guardar el acta de la audiencia %s", self.hearing.id
+                "Error al guardar la transcripción de la audiencia %s", self.hearing.id
             )
-            show_error(self, f"Error al guardar el acta: {exc}")
+            show_error(self, f"Error al guardar la transcripción: {exc}")
             return
         if not ok:
             show_error(self, "La audiencia no existe.")
             return
         self._saved_text = text
-        show_info(self, "Acta guardada.")
+        show_info(self, "Transcripción guardada.")
         self.accept()

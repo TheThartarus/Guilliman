@@ -159,8 +159,8 @@ class CaseFileMethods(_ServiceMixin):
               (``""`` retorna todos los que cumplan el resto).
             - ``defendant_name`` / ``victim_name`` / ``witness_name``: substring
               (LIKE) insensible a mayúsculas sobre el nombre de la persona.
-            - ``defendant_status`` / ``verdict_status``: coincidencia exacta.
-            - ``crime_type``: coincidencia exacta sobre el tipo de delito
+            - ``defendant_status`` / ``verdict_status``: coincidencia extranscripción.
+            - ``crime_type``: coincidencia extranscripción sobre el tipo de delito
               (``Ordinario``, ``Violencia``, ``Droga``, ``Armas``).
             - ``origin_location``: substring sobre la procedencia del expediente.
             - ``indictment_date_from`` / ``indictment_date_to``: rango sobre la

@@ -40,7 +40,7 @@ def test_duplicate_hearing(tmp_path, monkeypatch) -> None:
             HearingScheduleUpdate(
                 audio_path=rel_path,
                 audio_filename=filename,
-                transcription="Acta original",
+                transcription="Transcripción original",
             ),
         )
 

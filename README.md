@@ -13,7 +13,7 @@ Aplicación de escritorio nativa para Windows diseñada para la gestión integra
 ## Funcionalidades
 
 - **Panel de inicio** — Tarjetas accionables: expedientes, audiencias próximas (7 días),
-  audiencias pendientes de audio o acta y alertas de detención; tabla de las próximas
+  audiencias pendientes de audio o transcripción y alertas de detención; tabla de las próximas
   audiencias. Cada tarjeta navega a la vista o listado correspondiente.
 - **Gestión de expedientes** — Número de expediente único, fiscalía, fiscal, defensa, agencia aprehendadora, descripción del hecho, resumen, tipo de origen, estado de fallo y fechas procesales.
 - **Múltiples delitos por expediente** — Cada causa puede registrar varios delitos, cada
@@ -38,9 +38,9 @@ Aplicación de escritorio nativa para Windows diseñada para la gestión integra
   el detalle del expediente.
 - **Documentos adjuntos** — Guarda oficios, cédulas, informes y otros archivos en el
   expediente, con apertura y eliminación; se incluyen en el respaldo completo.
-- **Acta por audiencia** — Redacta o pega la transcripción de cada audiencia (con
+- **Transcripción por audiencia** — Redtranscripción o pega la transcripción de cada audiencia (con
   autoguardado) y expórtala a PDF (para imprimir), RTF (editable en Word) o imprímela
-  directamente. La tabla de audiencias indica cuáles ya tienen acta.
+  directamente. La tabla de audiencias indica cuáles ya tienen transcripción.
 - **Duplicar audiencia** — Copia tipo y notas y la reprograma 7 días después, para las
   continuaciones.
 - **Búsqueda de expedientes** — Por número, fiscalía u otros criterios.

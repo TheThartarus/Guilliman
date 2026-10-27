@@ -114,7 +114,7 @@ class _AttachmentsSection:
         container = QWidget()
         vbox = QVBoxLayout(container)
         vbox.setContentsMargins(0, 0, 0, 0)
-        vbox.addWidget(SubtitleLabel("Documentos adjuntos"))
+        vbox.addWidget(SubtitleLabel("Documentos"))
 
         row = QHBoxLayout()
         self.add_attachment_btn = PushButton("Adjuntar documento")

@@ -15,7 +15,7 @@ Desktop UI: PyQt5 + qfluentwidgets (FluentWindow). Windows-only, 32-bit target.
   Backups go through `service.backup_data()` / `service.restore_data()`;
   `ui.settings.save_last_backup_at` records the timestamp.
 - `dashboard_view.py` — "Inicio": five clickable stat cards (cases → search; upcoming →
-  agenda +7 days; missing audio/acta → agenda pending filter; detention alerts → dialog),
+  agenda +7 days; missing audio/transcripción → agenda pending filter; detention alerts → dialog),
   last-backup age line, and a table of the next 7 days. Default view.
 - `case_search_view.py` — search / list of case files; filters (text, status, verdict,
   crime type, names, accusation date range, origin, archived) run automatically with a
@@ -33,13 +33,13 @@ Desktop UI: PyQt5 + qfluentwidgets (FluentWindow). Windows-only, 32-bit target.
   `_documentaries.py`, `_attachments.py`, `_crimes.py`, `_experts.py`, `_hearings.py`.
   All combined in `CaseDetailView` via multiple inheritance. `_attachments.py` lists case
   documents (attach/open/delete; files stored under `attachments/`); `_crimes.py` lists
-  the case's crimes (read-only). `_hearings.py` shows "Acta" and "Audio"
-  columns, an "Acta" button, and a context menu with edit acta, duplicate (+7 days),
-  export acta (PDF/RTF), print acta and open audio (resolved via
+  the case's crimes (read-only). `_hearings.py` shows "Transcripción" and "Audio"
+  columns, an "Transcripción" button, and a context menu with edit transcripción, duplicate (+7 days),
+  export transcripción (PDF/RTF), print transcripción and open audio (resolved via
   `service.get_audio_abs_path`). The header has an Archivar/Restaurar button; editing is
   disabled for archived cases.
 - `agenda_view.py` — calendar / agenda of scheduled hearings; filters by date range,
-  status and pending kind (sin audio / sin acta); exports PDF and iCalendar (`.ics`, with
+  status and pending kind (sin audio / sin transcripción); exports PDF and iCalendar (`.ics`, with
   a 1-day `VALARM` reminder). `show_upcoming()` / `show_pending(kind)` are used by the
   dashboard cards.
 - `settings.py` — theme persistence (light / dark) to `settings.json`.
@@ -52,7 +52,7 @@ Desktop UI: PyQt5 + qfluentwidgets (FluentWindow). Windows-only, 32-bit target.
   `_sizes.py` (dialog dimension constants). All re-exported from `dialogs/__init__.py`.
   `HearingDialog` also attaches audio: it copies the file (via `service.store_audio_file`)
   only on save, so cancelling leaves no orphan, and can open/clear an existing audio.
-  `HearingTranscriptionDialog` edits the acta verbatim (no uppercasing/character
+  `HearingTranscriptionDialog` edits the transcripción verbatim (no uppercasing/character
   filtering) and autosaves to the DB after a 1.5 s pause; closing flushes pending changes.
 - `exporters.py` — PDF generation (reportlab), pure (no PyQt dependency).
 - `printing.py` — direct printing of hearing minutes via `QTextDocument` + `QPrinter`
@@ -122,7 +122,7 @@ Desktop UI: PyQt5 + qfluentwidgets (FluentWindow). Windows-only, 32-bit target.
 - `export_statistics_pdf(summary, filepath)` / `export_statistics_csv(summary, filepath)`
   render the `StatisticsSummary` report.
 - `export_hearing_minutes_pdf(case, hearing, filepath)` / `export_hearing_minutes_rtf(...)`
-  render a hearing acta (RTF is pure ASCII with `\uN?` escapes, editable in Word).
+  render a hearing transcripción (RTF is pure ASCII with `\uN?` escapes, editable in Word).
 - Pure (no PyQt dependency) — takes db DTOs + `ui.shared` labels.
 - Uses Helvetica (WinAnsi) deliberately for Spanish accents; keep it unless you switch to a
   Unicode font with a registered face.

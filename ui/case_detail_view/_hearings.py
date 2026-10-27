@@ -113,7 +113,7 @@ class _HearingsSection:
             self.load()
 
     def _on_edit_transcription(self) -> None:
-        """Abre el editor del acta de la audiencia seleccionada."""
+        """Abre el editor de la transcripción de la audiencia seleccionada."""
         hearing_id = self._selected_hearing_id()
         if hearing_id is None:
             show_error(self, "Seleccione una audiencia de la tabla.")
@@ -135,7 +135,7 @@ class _HearingsSection:
         if not confirm_delete(
             self,
             "¿Duplicar esta audiencia 7 días después? Se copiarán tipo y notas; "
-            "el audio y el acta no se copian.",
+            "el audio y la transcripción no se copian.",
         ):
             return
         try:
@@ -169,22 +169,22 @@ class _HearingsSection:
             return
         menu = RoundMenu(parent=self)
         self._add_menu_action(
-            menu, "Editar acta", lambda: self._open_transcription(hearing)
+            menu, "Editar transcripción", lambda: self._open_transcription(hearing)
         )
         self._add_menu_action(
             menu, "Duplicar (+7 días)", lambda: self._duplicate_hearing(hearing)
         )
         if hearing.transcription:
             self._add_menu_action(
-                menu, "Exportar acta (PDF)",
+                menu, "Exportar transcripción (PDF)",
                 lambda: self._export_minutes(hearing, "pdf"),
             )
             self._add_menu_action(
-                menu, "Exportar acta (RTF)",
+                menu, "Exportar transcripción (RTF)",
                 lambda: self._export_minutes(hearing, "rtf"),
             )
             self._add_menu_action(
-                menu, "Imprimir acta", lambda: self._print_minutes(hearing)
+                menu, "Imprimir transcripción", lambda: self._print_minutes(hearing)
             )
         if hearing.audio_path:
             self._add_menu_action(
@@ -194,10 +194,10 @@ class _HearingsSection:
         menu.exec(self.hearings_table.viewport().mapToGlobal(pos))
 
     def _export_minutes(self, hearing, kind: str) -> None:
-        """Exporta el acta de la audiencia seleccionada a PDF o RTF."""
+        """Exporta la transcripción de la audiencia seleccionada a PDF o RTF."""
         if self._case is None:
             return
-        base = f"acta_{self._case.case_number}"
+        base = f"transcripcion_{self._case.case_number}"
         if kind == "pdf":
             path = pick_save_pdf(self, f"{base}.pdf")
             if not path:
@@ -205,7 +205,7 @@ class _HearingsSection:
             exporter = export_hearing_minutes_pdf
         else:
             path, _ = QFileDialog.getSaveFileName(
-                self, "Exportar acta RTF", f"{base}.rtf", "RTF (*.rtf)"
+                self, "Exportar transcripción RTF", f"{base}.rtf", "RTF (*.rtf)"
             )
             if not path:
                 return
@@ -215,23 +215,23 @@ class _HearingsSection:
         try:
             exporter(self._case, hearing, path)
         except Exception as exc:  # noqa: BLE001 - se informa al usuario
-            logger.exception("Error al exportar el acta de la audiencia %s", hearing.id)
-            show_error(self, f"Error al exportar el acta: {exc}")
+            logger.exception("Error al exportar la transcripción de la audiencia %s", hearing.id)
+            show_error(self, f"Error al exportar la transcripción: {exc}")
             return
-        show_info(self, "Acta exportada.")
+        show_info(self, "Transcripción exportada.")
 
     def _print_minutes(self, hearing) -> None:
-        """Envía el acta directamente a la impresora (QPrintDialog)."""
+        """Envía la transcripción directamente a la impresora (QPrintDialog)."""
         if self._case is None:
             return
         try:
             printed = print_hearing_minutes(self, self._case, hearing)
         except Exception as exc:  # noqa: BLE001 - se informa al usuario
-            logger.exception("Error al imprimir el acta de la audiencia %s", hearing.id)
-            show_error(self, f"Error al imprimir el acta: {exc}")
+            logger.exception("Error al imprimir la transcripción de la audiencia %s", hearing.id)
+            show_error(self, f"Error al imprimir la transcripción: {exc}")
             return
         if printed:
-            show_info(self, "Acta enviada a la impresora.")
+            show_info(self, "Transcripción enviada a la impresora.")
 
     def _open_hearing_audio(self, rel_path: str) -> None:
         abs_path = self.app.service.get_audio_abs_path(rel_path)
@@ -260,7 +260,7 @@ class _HearingsSection:
         self.add_hearing_btn.clicked.connect(self._on_add_hearing)
         self.edit_hearing_btn = PushButton("Editar audiencia")
         self.edit_hearing_btn.clicked.connect(self._on_edit_hearing)
-        self.transcription_btn = PushButton("Acta")
+        self.transcription_btn = PushButton("Transcripción")
         self.transcription_btn.clicked.connect(self._on_edit_transcription)
         self.del_hearing_btn = PushButton("Eliminar audiencia")
         self.del_hearing_btn.clicked.connect(self._on_del_hearing)
@@ -276,7 +276,7 @@ class _HearingsSection:
         self.hearings_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.hearings_table.setColumnCount(7)
         self.hearings_table.setHorizontalHeaderLabels(
-            ["ID", "Fecha/Hora", "Tipo", "Estado", "Notas", "Acta", "Audio"]
+            ["ID", "Fecha/Hora", "Tipo", "Estado", "Notas", "Transcripción", "Audio"]
         )
         self.hearings_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.hearings_table.cellDoubleClicked.connect(self._on_hearing_double)

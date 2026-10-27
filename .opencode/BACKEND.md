@@ -62,7 +62,7 @@ Persistence + business logic. Pure Python (SQLAlchemy 2.0 + SQLite, pydantic). N
     `evacuation_date`, `additional_notes`.
   - `Expert`: `name`, `appeared` (bool), `appearance_date`, `additional_notes`.
   - `HearingSchedule`: `scheduled_at` (datetime), `hearing_type`, `status`, `notes`,
-    `transcription` (acta, free text), `audio_path` (relative to `get_app_data_dir()`),
+    `transcription` (transcripción, free text), `audio_path` (relative to `get_app_data_dir()`),
     `audio_filename` (original name).
   - `Attachment`: `name` (display title), `original_filename`, `rel_path` (relative to
     `get_app_data_dir()`, under `attachments/`), `uploaded_at`.
@@ -93,7 +93,7 @@ Persistence + business logic. Pure Python (SQLAlchemy 2.0 + SQLite, pydantic). N
 - `DetentionAlertItem` (case/defendant/days) is produced by `list_detention_alerts()`;
   `DefendantRead.days_detained` is computed only when `status == "Detenido"`.
 - `HearingScheduleCreate` / `HearingScheduleUpdate` / `HearingScheduleRead` carry
-  `audio_path` + `audio_filename` (optional) and `transcription` (acta). The agenda
+  `audio_path` + `audio_filename` (optional) and `transcription` (transcripción). The agenda
   item does not.
 - Hearing `transcription` is free text; never uppercase or filter it. `HearingScheduleUpdate`
   PATCH semantics ensure editing other fields (or scheduling) does not clear it.
@@ -125,7 +125,7 @@ Persistence + business logic. Pure Python (SQLAlchemy 2.0 + SQLite, pydantic). N
 - Children — each exposes `add_* -> int`, `update_* -> bool`, `delete_* -> bool`:
   defendants, victims, witnesses, documentaries, experts, hearings. Hearings also expose
   `update_hearing_status(...)`, `duplicate_hearing(hearing_id, days=7)` (copies type
-  and notes, resets status, omits audio/acta), `count_hearings_missing_audio()` and
+  and notes, resets status, omits audio/transcripción), `count_hearings_missing_audio()` and
   `count_hearings_missing_transcription()` (dashboard counters).
 - Hearing audio: `store_audio_file(src_path) -> (rel_path, filename)` copies the file
   into `<data_dir>/audios/` with a unique name and returns the DB-relative path;
