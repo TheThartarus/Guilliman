@@ -89,7 +89,8 @@ class CaseSearchView(QWidget):
         # --- Panel de filtros ---
         self.query = LineEdit()
         self.query.setPlaceholderText(
-            "N° de expediente, MP, delito, hechos o ubicación"
+            "N° de expediente, MP, delito, hechos, ubicación o "
+            "nombre de acusado / víctima / testigo"
         )
         self.defendant_status = ComboBox()
         self.defendant_status.addItem("Cualquiera", userData="")
@@ -104,19 +105,10 @@ class CaseSearchView(QWidget):
         for opt in CRIME_TYPE_OPTIONS:
             self.crime_type.addItem(opt, userData=opt)
 
-        self.defendant_name = LineEdit()
-        self.defendant_name.setPlaceholderText("Nombre")
-        self.victim_name = LineEdit()
-        self.victim_name.setPlaceholderText("Nombre")
-        self.witness_name = LineEdit()
-        self.witness_name.setPlaceholderText("Nombre")
-
         self.indictment_from = LineEdit()
         self.indictment_from.setPlaceholderText("dd/mm/aaaa")
         self.indictment_to = LineEdit()
         self.indictment_to.setPlaceholderText("dd/mm/aaaa")
-        self.origin_location = LineEdit()
-        self.origin_location.setPlaceholderText("Procedencia")
 
         filter_group = SettingCardGroup("Filtros")
         filter_grid = QGridLayout()
@@ -131,17 +123,11 @@ class CaseSearchView(QWidget):
             self._labeled("Estado del acusado", self.defendant_status), 0, 3
         )
         filter_grid.addWidget(self._labeled("Veredicto", self.verdict_status), 1, 0)
-        filter_grid.addWidget(self._labeled("Acusado", self.defendant_name), 1, 1)
-        filter_grid.addWidget(self._labeled("Víctima", self.victim_name), 1, 2)
-        filter_grid.addWidget(self._labeled("Testigo", self.witness_name), 1, 3)
         filter_grid.addWidget(
             self._labeled("Acusación desde", self.indictment_from), 2, 0
         )
         filter_grid.addWidget(
             self._labeled("Acusación hasta", self.indictment_to), 2, 1
-        )
-        filter_grid.addWidget(
-            self._labeled("Procedencia", self.origin_location), 2, 2, 1, 2
         )
 
         filter_holder = QWidget()
@@ -165,12 +151,8 @@ class CaseSearchView(QWidget):
         # Búsqueda instantánea: cualquier cambio en filtros programa la consulta.
         for field in (
             self.query,
-            self.defendant_name,
-            self.victim_name,
-            self.witness_name,
             self.indictment_from,
             self.indictment_to,
-            self.origin_location,
         ):
             field.textChanged.connect(self._schedule_search)
         for combo in (self.defendant_status, self.verdict_status, self.crime_type):
@@ -241,12 +223,8 @@ class CaseSearchView(QWidget):
             "defendant_status": combo_current_data(self.defendant_status) or "",
             "verdict_status": combo_current_data(self.verdict_status) or "",
             "crime_type": combo_current_data(self.crime_type) or "",
-            "defendant_name": self.defendant_name.text(),
-            "victim_name": self.victim_name.text(),
-            "witness_name": self.witness_name.text(),
             "indictment_from": self.indictment_from.text(),
             "indictment_to": self.indictment_to.text(),
-            "origin_location": self.origin_location.text(),
             "include_archived": self.include_archived.isChecked(),
         }
 
@@ -264,12 +242,8 @@ class CaseSearchView(QWidget):
         if not data:
             return
         self.query.setText(str(data.get("query", "")))
-        self.defendant_name.setText(str(data.get("defendant_name", "")))
-        self.victim_name.setText(str(data.get("victim_name", "")))
-        self.witness_name.setText(str(data.get("witness_name", "")))
         self.indictment_from.setText(str(data.get("indictment_from", "")))
         self.indictment_to.setText(str(data.get("indictment_to", "")))
-        self.origin_location.setText(str(data.get("origin_location", "")))
         combo_set_data(self.defendant_status, data.get("defendant_status") or "")
         combo_set_data(self.verdict_status, data.get("verdict_status") or "")
         combo_set_data(self.crime_type, data.get("crime_type") or "")
@@ -280,12 +254,8 @@ class CaseSearchView(QWidget):
         self.defendant_status.setCurrentIndex(0)
         self.verdict_status.setCurrentIndex(0)
         self.crime_type.setCurrentIndex(0)
-        self.defendant_name.clear()
-        self.victim_name.clear()
-        self.witness_name.clear()
         self.indictment_from.clear()
         self.indictment_to.clear()
-        self.origin_location.clear()
         self.include_archived.setChecked(False)
         self._page = 0
         self._do_search()
@@ -305,25 +275,17 @@ class CaseSearchView(QWidget):
             if verdict_status_display
             else None
         )
-        defendant_name = (self.defendant_name.text() or "").strip() or None
-        victim_name = (self.victim_name.text() or "").strip() or None
-        witness_name = (self.witness_name.text() or "").strip() or None
         crime_type = combo_current_data(self.crime_type) or None
         include_archived = self.include_archived.isChecked()
         indictment_from = parse_date_text(self.indictment_from.text())
         indictment_to = parse_date_text(self.indictment_to.text())
-        origin_location = (self.origin_location.text() or "").strip() or None
 
         # Obtener total para paginación.
         self._total = self.app.service.count_case_files(
             query,
-            defendant_name=defendant_name,
-            victim_name=victim_name,
-            witness_name=witness_name,
             defendant_status=defendant_status,
             verdict_status=verdict_status,
             crime_type=crime_type,
-            origin_location=origin_location,
             indictment_date_from=indictment_from,
             indictment_date_to=indictment_to,
             include_archived=include_archived,
@@ -337,13 +299,9 @@ class CaseSearchView(QWidget):
                 query,
                 limit=self._page_size,
                 offset=offset,
-                defendant_name=defendant_name,
-                victim_name=victim_name,
-                witness_name=witness_name,
                 defendant_status=defendant_status,
                 verdict_status=verdict_status,
                 crime_type=crime_type,
-                origin_location=origin_location,
                 indictment_date_from=indictment_from,
                 indictment_date_to=indictment_to,
                 include_archived=include_archived,
