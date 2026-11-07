@@ -21,6 +21,8 @@ from ._sizes import (
     EXPERT_DIALOG_WIDTH,
     HEARING_DIALOG_HEIGHT,
     HEARING_DIALOG_WIDTH,
+    LINK_DIALOG_HEIGHT,
+    LINK_DIALOG_WIDTH,
     VICTIM_DIALOG_HEIGHT,
     VICTIM_DIALOG_WIDTH,
     WITNESS_DIALOG_HEIGHT,
@@ -36,6 +38,7 @@ from ._transcription import HearingTranscriptionDialog
 from ._detention import DetentionAlertsDialog
 from ._crime import CrimeDialog
 from ._appeal import AppealDialog
+from ._link import LinkCaseDialog
 
 __all__ = [
     "ActingOfficialDialog",
@@ -45,6 +48,7 @@ __all__ = [
     "DetentionAlertsDialog",
     "HearingDialog",
     "HearingTranscriptionDialog",
+    "LinkCaseDialog",
     "VictimDialog",
     "WitnessDialog",
     "DocumentaryDialog",
@@ -64,6 +68,8 @@ __all__ = [
     "DEFENDANT_DIALOG_HEIGHT",
     "HEARING_DIALOG_WIDTH",
     "HEARING_DIALOG_HEIGHT",
+    "LINK_DIALOG_WIDTH",
+    "LINK_DIALOG_HEIGHT",
     "VICTIM_DIALOG_WIDTH",
     "VICTIM_DIALOG_HEIGHT",
     "WITNESS_DIALOG_WIDTH",

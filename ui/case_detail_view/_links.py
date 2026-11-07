@@ -4,12 +4,11 @@ from __future__ import annotations
 
 import logging
 
-from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
     QAbstractItemView,
+    QDialog,
     QHBoxLayout,
     QHeaderView,
-    QInputDialog,
     QTableWidgetItem,
     QVBoxLayout,
     QWidget,
@@ -19,7 +18,7 @@ from qfluentwidgets import PushButton, SubtitleLabel, TableWidget
 
 from db import CaseFileRead
 
-from ui.dialogs import confirm_delete
+from ui.dialogs import LinkCaseDialog, confirm_delete
 from ui.widgets import show_error, show_info
 
 logger = logging.getLogger("guilliman")
@@ -41,13 +40,11 @@ class _LinksSection:
             self.links_table.setItem(row, 0, QTableWidgetItem(item.case_number))
 
     def _on_link_case(self) -> None:
-        number, accepted = QInputDialog.getText(
-            self, "Vincular expediente", "Número de expediente:"
-        )
-        if not accepted:
+        dialog = LinkCaseDialog(self)
+        if dialog.exec() != QDialog.Accepted or not dialog.case_number:
             return
         try:
-            self.app.service.link_cases(self.case_file_id, number)
+            self.app.service.link_cases(self.case_file_id, dialog.case_number)
         except ValueError as exc:
             logger.exception("Error al vincular expediente %s", self.case_file_id)
             show_error(self, str(exc))
