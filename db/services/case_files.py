@@ -13,6 +13,7 @@ from pathlib import Path
 from ..database import get_app_data_dir, session_scope
 from ..exceptions import CaseFileNotFoundError, DuplicateCaseNumberError
 from ..models import (
+    Appeal,
     CaseFile,
     Crime,
     Defendant,
@@ -68,6 +69,7 @@ class CaseFileMethods(_ServiceMixin):
         hearing_to: datetime | None = None,
         include_archived: bool = False,
         is_emblematic: bool | None = None,
+        has_appeal: bool | None = None,
     ):
         """Aplica filtros AND combinables sobre un statement de CaseFile.
 
@@ -131,6 +133,12 @@ class CaseFileMethods(_ServiceMixin):
             statement = statement.where(CaseFile.id.in_(sub))
         if is_emblematic is not None:
             statement = statement.where(CaseFile.is_emblematic == is_emblematic)
+        if has_appeal is not None:
+            sub = select(Appeal.case_file_id)
+            if has_appeal:
+                statement = statement.where(CaseFile.id.in_(sub))
+            else:
+                statement = statement.where(CaseFile.id.notin_(sub))
         return statement
 
     # ------------------------------------------------------------------ #
@@ -154,6 +162,7 @@ class CaseFileMethods(_ServiceMixin):
         hearing_to: datetime | None = None,
         include_archived: bool = False,
         is_emblematic: bool | None = None,
+        has_appeal: bool | None = None,
     ) -> list[CaseFileRead]:
         """Busca expedientes con filtros combinables (AND).
 
@@ -173,6 +182,8 @@ class CaseFileMethods(_ServiceMixin):
               audiencias (cualquiera del expediente).
             - ``is_emblematic``: cuando se indica, filtra solo expedientes
               emblemáticos (True) o no emblemáticos (False).
+            - ``has_appeal``: cuando se indica, filtra solo expedientes con
+              apelaciones (True) o sin apelaciones (False).
 
         Los filtros sobre hijos usan subqueries ``IN (SELECT ...)`` para no
         generar producto cartesiano al unir las tablas.
@@ -206,6 +217,7 @@ class CaseFileMethods(_ServiceMixin):
             hearing_to=hearing_to,
             include_archived=include_archived,
             is_emblematic=is_emblematic,
+            has_appeal=has_appeal,
         )
         statement = statement.order_by(CaseFile.case_number).limit(limit).offset(offset)
         with session_scope(self._db_path) as session:
@@ -279,6 +291,7 @@ class CaseFileMethods(_ServiceMixin):
         hearing_to: datetime | None = None,
         include_archived: bool = False,
         is_emblematic: bool | None = None,
+        has_appeal: bool | None = None,
     ) -> int:
         """Cuenta expedientes que coinciden con los filtros de búsqueda.
 
@@ -302,6 +315,7 @@ class CaseFileMethods(_ServiceMixin):
             hearing_to=hearing_to,
             include_archived=include_archived,
             is_emblematic=is_emblematic,
+            has_appeal=has_appeal,
         )
         with session_scope(self._db_path) as session:
             return session.execute(statement).scalar_one()

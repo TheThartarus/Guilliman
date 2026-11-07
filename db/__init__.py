@@ -17,6 +17,8 @@ from .exceptions import (
 from .schemas import (
     ActingOfficialCreate,
     ActingOfficialRead,
+    AppealCreate,
+    AppealRead,
     AttachmentCreate,
     AttachmentRead,
     AttachmentIntegrityIssue,
@@ -57,6 +59,8 @@ from .service import CaseFileService
 __all__ = [
     "ActingOfficialCreate",
     "ActingOfficialRead",
+    "AppealCreate",
+    "AppealRead",
     "AttachmentCreate",
     "AttachmentRead",
     "AttachmentIntegrityIssue",

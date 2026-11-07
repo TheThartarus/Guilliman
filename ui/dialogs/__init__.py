@@ -11,6 +11,8 @@ funcionando sin cambios tras la refactorización del god file original.
 from ._sizes import (
     ACTING_OFFICIAL_DIALOG_HEIGHT,
     ACTING_OFFICIAL_DIALOG_WIDTH,
+    APPEAL_DIALOG_HEIGHT,
+    APPEAL_DIALOG_WIDTH,
     DEFENDANT_DIALOG_HEIGHT,
     DEFENDANT_DIALOG_WIDTH,
     DOCUMENTARY_DIALOG_HEIGHT,
@@ -33,9 +35,11 @@ from ._hearing import HearingDialog
 from ._transcription import HearingTranscriptionDialog
 from ._detention import DetentionAlertsDialog
 from ._crime import CrimeDialog
+from ._appeal import AppealDialog
 
 __all__ = [
     "ActingOfficialDialog",
+    "AppealDialog",
     "CrimeDialog",
     "DefendantDialog",
     "DetentionAlertsDialog",
@@ -54,6 +58,8 @@ __all__ = [
     "pick_save_pdf",
     "ACTING_OFFICIAL_DIALOG_WIDTH",
     "ACTING_OFFICIAL_DIALOG_HEIGHT",
+    "APPEAL_DIALOG_WIDTH",
+    "APPEAL_DIALOG_HEIGHT",
     "DEFENDANT_DIALOG_WIDTH",
     "DEFENDANT_DIALOG_HEIGHT",
     "HEARING_DIALOG_WIDTH",

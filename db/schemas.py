@@ -50,6 +50,15 @@ WeaponTypeValue = Literal[
     "Otra",
 ]
 
+CourtDecisionValue = Literal["Con lugar", "Sin lugar"]
+
+AppealClassificationValue = Literal[
+    "De autos",
+    "Por sentencia",
+    "Amparo",
+    "Efecto suspensivo",
+]
+
 
 def _compute_age(birth_date: date | None) -> int | None:
     """Calcula la edad en años a partir de una fecha de nacimiento."""
@@ -278,6 +287,33 @@ class ActingOfficialRead(BaseModel):
 
 
 # --------------------------------------------------------------------------- #
+# Apelaciones
+# --------------------------------------------------------------------------- #
+class AppealCreate(BaseModel):
+    """Carga de entrada para crear/actualizar una apelación."""
+
+    filed_at: date | None = None
+    remitted_to_court_at: date | None = None
+    returned_from_court_at: date | None = None
+    court_decision: CourtDecisionValue | None = None
+    classification: AppealClassificationValue | None = None
+
+
+class AppealRead(BaseModel):
+    """Representación de una apelación devuelta al frontend."""
+
+    id: int
+    case_file_id: int
+    filed_at: date | None = None
+    remitted_to_court_at: date | None = None
+    returned_from_court_at: date | None = None
+    court_decision: str | None = None
+    classification: str | None = None
+
+    model_config = {"from_attributes": True}
+
+
+# --------------------------------------------------------------------------- #
 # Audiencias programadas
 # --------------------------------------------------------------------------- #
 class HearingScheduleCreate(BaseModel):
@@ -474,6 +510,7 @@ class CaseFileRead(BaseModel):
     hearings: list[HearingScheduleRead] = []
     attachments: list[AttachmentRead] = []
     crimes: list[CrimeRead] = []
+    appeals: list[AppealRead] = []
 
     model_config = {"from_attributes": True}
 

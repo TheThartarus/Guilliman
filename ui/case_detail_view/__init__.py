@@ -49,6 +49,7 @@ from ui.shared import (
 from ui.widgets import show_error, show_info
 
 from ._acting_officials import _ActingOfficialsSection
+from ._appeals import _AppealsSection
 from ._attachments import _AttachmentsSection
 from ._crimes import _CrimesSection
 from ._defendants import _DefendantsSection
@@ -71,6 +72,7 @@ class CaseDetailView(
     _CrimesSection,
     _ExpertsSection,
     _ActingOfficialsSection,
+    _AppealsSection,
     _HearingsSection,
     _LinksSection,
     QWidget,
@@ -206,6 +208,7 @@ class CaseDetailView(
         layout.addWidget(self._build_acting_officials_section())
         layout.addWidget(self._build_links_section())
         layout.addWidget(self._build_hearings_section())
+        layout.addWidget(self._build_appeals_section())
 
         scroll.setWidget(content)
         root = QVBoxLayout(self)
@@ -277,6 +280,7 @@ class CaseDetailView(
         self._fill_acting_officials(case)
         self._fill_links(case)
         self._fill_hearings(case)
+        self._fill_appeals(case)
 
     def refresh(self) -> None:
         """Recarga al volver a esta vista."""

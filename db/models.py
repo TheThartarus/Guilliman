@@ -146,6 +146,12 @@ class CaseFile(Base):
         passive_deletes=True,
         lazy="selectin",
     )
+    appeals: Mapped[list["Appeal"]] = relationship(
+        back_populates="case_file",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        lazy="selectin",
+    )
 
     def __repr__(self) -> str:
         return f"<CaseFile id={self.id} case_number={self.case_number!r}>"
@@ -400,3 +406,34 @@ class CaseLink(Base):
             f"<CaseLink id={self.id} "
             f"{self.case_file_id}->{self.related_case_file_id}>"
         )
+
+
+class Appeal(Base):
+    """Una apelación interpuesta sobre un expediente (tabla: ``appeals``).
+
+    Un expediente puede tener varias apelaciones. Cada una registra cuándo se
+    interpuso, cuándo se remitió a la corte, cuándo regresó y la decisión de
+    la corte (catálogo cerrado) junto con su clasificación.
+    """
+
+    __tablename__ = "appeals"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    case_file_id: Mapped[int] = mapped_column(
+        ForeignKey("case_files.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    # Fecha en que se interpuso/llegó la apelación.
+    filed_at: Mapped[date | None] = mapped_column(Date)
+    # Fecha en que se remitió el expediente a la corte.
+    remitted_to_court_at: Mapped[date | None] = mapped_column(Date)
+    # Fecha en que el expediente regresó de la corte.
+    returned_from_court_at: Mapped[date | None] = mapped_column(Date)
+    # Decisión de la corte: catálogo cerrado.
+    court_decision: Mapped[str | None] = mapped_column(String(50))
+    # Clasificación de la apelación: selección única.
+    classification: Mapped[str | None] = mapped_column(String(50))
+
+    case_file: Mapped[CaseFile] = relationship(back_populates="appeals")
+
+    def __repr__(self) -> str:
+        return f"<Appeal id={self.id} case_file_id={self.case_file_id}>"

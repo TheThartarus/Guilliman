@@ -42,6 +42,7 @@ from .services.victims import VictimMethods
 from .services.witnesses import WitnessMethods
 from .services.attachments import AttachmentMethods
 from .services.acting_officials import ActingOfficialMethods
+from .services.appeals import AppealMethods
 
 
 class CaseFileService(
@@ -58,6 +59,7 @@ class CaseFileService(
     HearingMethods,
     StatisticsMethods,
     BackupMethods,
+    AppealMethods,
 ):
     """Fachada de servicio de alto nivel para la aplicación Guilliman.
 
