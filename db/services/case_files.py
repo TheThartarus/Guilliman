@@ -67,6 +67,7 @@ class CaseFileMethods(_ServiceMixin):
         hearing_from: datetime | None = None,
         hearing_to: datetime | None = None,
         include_archived: bool = False,
+        is_emblematic: bool | None = None,
     ):
         """Aplica filtros AND combinables sobre un statement de CaseFile.
 
@@ -128,6 +129,8 @@ class CaseFileMethods(_ServiceMixin):
             if hearing_to is not None:
                 sub = sub.where(HearingSchedule.scheduled_at <= hearing_to)
             statement = statement.where(CaseFile.id.in_(sub))
+        if is_emblematic is not None:
+            statement = statement.where(CaseFile.is_emblematic == is_emblematic)
         return statement
 
     # ------------------------------------------------------------------ #
@@ -150,6 +153,7 @@ class CaseFileMethods(_ServiceMixin):
         hearing_from: datetime | None = None,
         hearing_to: datetime | None = None,
         include_archived: bool = False,
+        is_emblematic: bool | None = None,
     ) -> list[CaseFileRead]:
         """Busca expedientes con filtros combinables (AND).
 
@@ -167,6 +171,8 @@ class CaseFileMethods(_ServiceMixin):
               fecha de acusación del expediente.
             - ``hearing_from`` / ``hearing_to``: rango sobre la fecha/hora de
               audiencias (cualquiera del expediente).
+            - ``is_emblematic``: cuando se indica, filtra solo expedientes
+              emblemáticos (True) o no emblemáticos (False).
 
         Los filtros sobre hijos usan subqueries ``IN (SELECT ...)`` para no
         generar producto cartesiano al unir las tablas.
@@ -199,6 +205,7 @@ class CaseFileMethods(_ServiceMixin):
             hearing_from=hearing_from,
             hearing_to=hearing_to,
             include_archived=include_archived,
+            is_emblematic=is_emblematic,
         )
         statement = statement.order_by(CaseFile.case_number).limit(limit).offset(offset)
         with session_scope(self._db_path) as session:
@@ -271,6 +278,7 @@ class CaseFileMethods(_ServiceMixin):
         hearing_from: datetime | None = None,
         hearing_to: datetime | None = None,
         include_archived: bool = False,
+        is_emblematic: bool | None = None,
     ) -> int:
         """Cuenta expedientes que coinciden con los filtros de búsqueda.
 
@@ -293,6 +301,7 @@ class CaseFileMethods(_ServiceMixin):
             hearing_from=hearing_from,
             hearing_to=hearing_to,
             include_archived=include_archived,
+            is_emblematic=is_emblematic,
         )
         with session_scope(self._db_path) as session:
             return session.execute(statement).scalar_one()

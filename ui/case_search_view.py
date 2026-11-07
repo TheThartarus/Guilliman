@@ -142,10 +142,12 @@ class CaseSearchView(QWidget):
         self.clear_btn = PushButton("Limpiar filtros")
         self.clear_btn.clicked.connect(self._clear_filters)
         self.include_archived = CheckBox("Incluir archivados")
+        self.emblematic = CheckBox("Emblemáticos")
         actions.addWidget(self.search_btn)
         actions.addWidget(self.clear_btn)
         actions.addStretch(1)
         actions.addWidget(self.include_archived)
+        actions.addWidget(self.emblematic)
         filter_group.vBoxLayout.addLayout(actions)
 
         # Búsqueda instantánea: cualquier cambio en filtros programa la consulta.
@@ -158,6 +160,7 @@ class CaseSearchView(QWidget):
         for combo in (self.defendant_status, self.verdict_status, self.crime_type):
             combo.currentIndexChanged.connect(self._schedule_search)
         self.include_archived.stateChanged.connect(self._schedule_search)
+        self.emblematic.stateChanged.connect(self._schedule_search)
 
         layout.addWidget(filter_group)
 
@@ -226,6 +229,7 @@ class CaseSearchView(QWidget):
             "indictment_from": self.indictment_from.text(),
             "indictment_to": self.indictment_to.text(),
             "include_archived": self.include_archived.isChecked(),
+            "is_emblematic": self.emblematic.isChecked(),
         }
 
     def _save_filters(self) -> None:
@@ -248,6 +252,7 @@ class CaseSearchView(QWidget):
         combo_set_data(self.verdict_status, data.get("verdict_status") or "")
         combo_set_data(self.crime_type, data.get("crime_type") or "")
         self.include_archived.setChecked(bool(data.get("include_archived", False)))
+        self.emblematic.setChecked(bool(data.get("is_emblematic", False)))
 
     def _clear_filters(self) -> None:
         self.query.clear()
@@ -257,6 +262,7 @@ class CaseSearchView(QWidget):
         self.indictment_from.clear()
         self.indictment_to.clear()
         self.include_archived.setChecked(False)
+        self.emblematic.setChecked(False)
         self._page = 0
         self._do_search()
 
@@ -277,6 +283,7 @@ class CaseSearchView(QWidget):
         )
         crime_type = combo_current_data(self.crime_type) or None
         include_archived = self.include_archived.isChecked()
+        is_emblematic = self.emblematic.isChecked()
         indictment_from = parse_date_text(self.indictment_from.text())
         indictment_to = parse_date_text(self.indictment_to.text())
 
@@ -289,6 +296,7 @@ class CaseSearchView(QWidget):
             indictment_date_from=indictment_from,
             indictment_date_to=indictment_to,
             include_archived=include_archived,
+            is_emblematic=is_emblematic,
         )
         max_page = max(0, (self._total - 1) // self._page_size)
         self._page = min(self._page, max_page)
@@ -305,6 +313,7 @@ class CaseSearchView(QWidget):
                 indictment_date_from=indictment_from,
                 indictment_date_to=indictment_to,
                 include_archived=include_archived,
+                is_emblematic=is_emblematic,
             )
         except ValueError as exc:
             logger.exception("Error al buscar expedientes")
